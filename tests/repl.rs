@@ -19,7 +19,7 @@ fn repl_eval(code: &str) -> String {
 
 #[test]
 fn test_eval() {
-    assert_eq!(repl_eval(r#"print!("Hello, world!");"#), "Hello, world!");
+    assert_eq!(repl_eval(r#"println!("Hello, world!");"#), "Hello, world!\n");
     assert_eq!(repl_eval(r#"vec![1i, 2, 3]"#), "[1, 2, 3]\n");
     assert_eq!(repl_eval(r#""foo".to_string().as_slice()"#), "foo\n");
 }
