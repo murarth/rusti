@@ -18,6 +18,14 @@ Run tests:
 
     cargo test
 
+Run `rusti`:
+
+    cargo run
+
+Cargo does not currently support an `install` subcommand, so if you would like
+to run `rusti` outside the build directory, you must manually copy `target/rusti`
+into a directory in your `PATH` environment variable.
+
 ## Usage
 
 Running `rusti` gives a prompt that accepts (most) any valid Rust code.
