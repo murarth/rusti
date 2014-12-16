@@ -258,7 +258,8 @@ fn get_sysroot() -> Path {
     if let Some(path) = getenv_as_bytes("PATH") {
         let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
 
-        debug!("searching for sysroot in PATH {}", path);
+        debug!("searching for sysroot in PATH {}",
+            String::from_utf8_lossy(path.as_slice()));
 
         for mut p in split_paths(path).into_iter() {
             if p.join(rustc).is_file() {

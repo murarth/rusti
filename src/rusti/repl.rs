@@ -76,36 +76,8 @@ impl Repl {
 
     /// Constructs a new `Repl` with additional library lookup paths.
     pub fn new_with_libs(libs: Vec<Path>) -> Repl {
-        // Initialize the execution environment
-        let prog =
-r#"extern crate rustrt;
-
-#[no_mangle]
-pub fn _rusti_init() {
-    let _rusti_arg = "rusti";
-    let _rusti_argp = _rusti_arg.as_ptr();
-
-    rustrt::init(1, &_rusti_argp);
-}
-"#;
-
-        let mut ee = ExecutionEngine::new(libs);
-
-        if let Some(llmod) = ee.add_module(prog) {
-            let fp = ee.get_function("_rusti_init").unwrap();
-            let f: fn() = unsafe { transmute(fp) };
-
-            debug!("running initialization function");
-
-            f();
-
-            ee.remove_module(llmod);
-        } else {
-            panic!("failed to compile Repl initialization");
-        }
-
         Repl{
-            engine: ee,
+            engine: ExecutionEngine::new(libs),
             attributes: Vec::new(),
             view_items: Vec::new(),
             items: Vec::new(),
@@ -229,31 +201,6 @@ extern crate "rustrt" as _rusti_rt;
         , program = program)
     }
 
-    /// Cleans up the rust runtime inside the execution environment
-    fn cleanup(&mut self) {
-        let prog =
-r#"extern crate rustrt;
-
-#[no_mangle]
-fn _rusti_cleanup() {
-    unsafe { rustrt::cleanup(); }
-}
-"#;
-
-        if let Some(llmod) = self.engine.add_module(prog) {
-            let fp = self.engine.get_function("_rusti_cleanup").unwrap();
-            let f: fn() = unsafe { transmute(fp) };
-
-            debug!("running cleanup function");
-
-            f();
-
-            self.engine.remove_module(llmod);
-        } else {
-            panic!("failed to compile Repl cleanup");
-        }
-    }
-
     /// Runs a single command input.
     fn handle_command(&mut self, cmd: String, args: Option<String>) {
         match lookup_command(cmd.as_slice()) {
@@ -371,12 +318,6 @@ fn {name}() {{
         if let Some(t) = self.expr_type(name, prog) {
             println!("{} = {}", expr, t);
         }
-    }
-}
-
-impl Drop for Repl {
-    fn drop(&mut self) {
-        self.cleanup();
     }
 }
 
