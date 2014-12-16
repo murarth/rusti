@@ -1,0 +1,17 @@
+[package]
+
+name = "rusti"
+version = "0.0.1"
+authors = [ "Murarth <murarth@gmail.com>" ]
+
+[lib]
+
+name = "rusti"
+path = "src/rusti/lib.rs"
+test = false
+
+[[bin]]
+
+name = "rusti"
+doc = false
+test = false

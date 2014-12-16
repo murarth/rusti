@@ -1,0 +1,8 @@
+language: rust
+
+notifications:
+    email: false
+
+branches:
+    only:
+        - master

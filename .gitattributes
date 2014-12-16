@@ -1,0 +1,6 @@
+[attr]rust text eol=lf whitespace=tab-in-indent,trailing-space,tabwidth=4
+[attr]markdown text eolf=lf whitespace=tab-in-indent,-blank-at-eol,tabwidth=4
+
+* text=auto eol=lf
+*.rs rust
+*.md markdown
