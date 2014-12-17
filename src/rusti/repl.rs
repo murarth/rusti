@@ -238,22 +238,7 @@ extern crate "rustrt" as _rusti_rt;
 r#"
 #[no_mangle]
 pub fn {name}() {{
-    match unsafe {{ _rusti_rt::unwind::try(_rusti_inner) }} {{
-        Ok(_) => (),
-        Err(e) => {{
-            use std::any::AnyRefExt;
-            use std::boxed::BoxAny;
-            let r = &*e;
-            let msg = if let Some(msg) = r.downcast_ref::<&'static str>() {{
-                *msg
-            }} else if let Some(msg) = r.downcast_ref::<String>() {{
-                msg.as_slice()
-            }} else {{
-                "Box<Any>"
-            }};
-            println!("panicked: '{{}}'", msg);
-        }}
-    }}
+    let _ = unsafe {{ _rusti_rt::unwind::try(_rusti_inner) }};
 }}
 
 fn _rusti_inner() {{
