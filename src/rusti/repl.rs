@@ -231,7 +231,7 @@ extern crate "rustrt" as _rusti_rt;
             *stmt = format!(r#"println!("{{}}", {{ {} }});"#, stmt);
         }
 
-        let stmts = input.statements.connect(" ");
+        let stmts = input.statements.connect("\n");
 
         let prog = self.build_program(Some(&input),
             format!(
