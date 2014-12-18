@@ -85,7 +85,7 @@ impl ExecutionEngine {
 
     /// Constructs a new `ExecutionEngine` with the given starting input
     /// and library search paths.
-    pub fn new_with_input<'a, T>(input: T, libs: Vec<Path>) -> ExecutionEngine
+    pub fn new_with_input<T>(input: T, libs: Vec<Path>) -> ExecutionEngine
             where T: IntoInput {
         let sysroot = get_sysroot();
 
@@ -122,7 +122,7 @@ impl ExecutionEngine {
     /// Compile a module and add it to the execution engine.
     /// If the module fails to compile, errors will be printed to `stderr`
     /// and `None` will be returned. Otherwise, the module is returned.
-    pub fn add_module<'a, T>(&mut self, input: T) -> Option<llvm::ModuleRef>
+    pub fn add_module<T>(&mut self, input: T) -> Option<llvm::ModuleRef>
             where T: IntoInput {
         debug!("compiling module");
 

@@ -20,6 +20,8 @@ extern crate syntax;
 
 use getopts::{optflag, optopt, optmulti, OptGroup};
 
+use std::io::fs::PathExtensions;
+
 pub mod exec;
 pub mod input;
 pub mod readline;
@@ -34,6 +36,7 @@ pub fn run() {
         optflag("h", "help", "Print this help message and exit"),
         optflag("v", "version", "Print version and exit"),
         optmulti("L", "", "Add a directory to the library search path", "PATH"),
+        optflag("", "no-rc", "Do not run $HOME/.rustirc.rs"),
     ];
 
     let matches = match getopts::getopts(args.tail(), opts) {
@@ -59,10 +62,28 @@ pub fn run() {
 
     let mut repl = repl::Repl::new_with_libs(addl_libs);
 
+    if !matches.opt_present("no-rc") {
+        if let Some(p) = std::os::homedir() {
+            let rc = p.join(".rustirc.rs");
+            if rc.is_file() {
+                if !repl.run_file(rc) {
+                    std::os::set_exit_status(1);
+                    return;
+                }
+            }
+        }
+    }
+
     if let Some(cmd) = matches.opt_str("c") {
         repl.run_command(cmd.as_slice());
     } else if let Some(expr) = matches.opt_str("e") {
         repl.eval(expr.as_slice());
+    } else if !matches.free.is_empty() {
+        let path = Path::new(&matches.free[0]);
+
+        if !repl.run_file(path) {
+            std::os::set_exit_status(1);
+        }
     } else {
         repl.run();
     }
@@ -80,7 +101,7 @@ pub fn version() -> String {
 
 fn print_usage(arg0: &str, opts: &[OptGroup]) {
     print!("{}", getopts::usage(format!(
-        "Usage: {} [OPTIONS]", arg0).as_slice(), opts));
+        "Usage: {} [OPTIONS] [FILE]", arg0).as_slice(), opts));
 }
 
 fn print_version() {

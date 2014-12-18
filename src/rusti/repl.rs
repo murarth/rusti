@@ -8,12 +8,14 @@
 
 //! Runs Rust code in an encapsulated environment
 
+use std::io::File;
 use std::io::stdio::stdin_raw;
 use std::mem::transmute;
+use std::os;
 
 use super::exec::ExecutionEngine;
 use super::input::{parse_command, parse_program};
-use super::input::{Input, InputReader, ViewItem};
+use super::input::{FileReader, Input, InputReader, ViewItem};
 use super::input::InputResult::*;
 
 use super::rustc::middle::ty;
@@ -87,7 +89,7 @@ impl Repl {
 
     /// Evaluates a single round of input, printing the result to `stdout`.
     pub fn eval(&mut self, input: &str) {
-        match parse_program(input, false) {
+        match parse_program(input, false, None) {
             Program(i) => self.handle_input(i),
             _ => (),
         }
@@ -126,7 +128,7 @@ impl Repl {
                     }
                     break;
                 }
-                ParseError(err) => {
+                InputError(err) => {
                     if let Some(err) = err {
                         println!("{}", err);
                     }
@@ -140,9 +142,47 @@ impl Repl {
     pub fn run_command(&mut self, cmd: &str) {
         match parse_command(cmd) {
             Command(name, args) => self.handle_command(name, args),
-            ParseError(Some(err)) => println!("{}", err),
+            InputError(Some(err)) => println!("{}", err),
             _ => ()
         }
+    }
+
+    /// Runs rusti input from the named file.
+    /// Returns `true` if it was compiled successfully.
+    pub fn run_file(&mut self, path: Path) -> bool {
+        let f = match File::open(&path) {
+            Ok(f) => f,
+            Err(e) => {
+                println!("{}: {}", os::args()[0], e);
+                return false;
+            }
+        };
+
+        let mut input = FileReader::new(f);
+
+        loop {
+            if self.read_block {
+                println!("{}: `.block` command is not necessary when running a file",
+                    os::args()[0]);
+                return false;
+            }
+
+            let input = input.read_input();
+
+            match input {
+                Program(input) => self.handle_input(input),
+                Command(name, args) => self.handle_command(name, args),
+                InputError(Some(e)) => {
+                    println!("{}: {}", os::args()[0], e);
+                    return false;
+                }
+                InputError(None) => return false,
+                Eof => break,
+                _ => unreachable!(),
+            }
+        }
+
+        true
     }
 
     /// Build a program text containing all persistent items seen so far and,
