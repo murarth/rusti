@@ -34,6 +34,7 @@ use super::syntax::ast_map;
 use super::syntax::diagnostics::registry::Registry;
 
 // This seems like a such a simple solution that I'm surprised it works.
+#[link(name = "morestack")]
 extern "C" {
     fn __morestack();
 }
