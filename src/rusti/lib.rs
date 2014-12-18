@@ -34,6 +34,7 @@ pub fn run() {
         optopt("c", "", "Execute a rusti command and exit", "COMMAND"),
         optopt("e", "", "Execute a one-line program and exit", "PROGRAM"),
         optflag("h", "help", "Print this help message and exit"),
+        optflag("i", "interactive", "Run rusti interactively even with a file"),
         optflag("v", "version", "Print version and exit"),
         optmulti("L", "", "Add a directory to the library search path", "PATH"),
         optflag("", "no-rc", "Do not run $HOME/.rustirc.rs"),
@@ -56,6 +57,11 @@ pub fn run() {
         print_usage(args[0].as_slice(), opts);
         return;
     }
+
+    let interactive = matches.opt_present("interactive") ||
+        (matches.free.is_empty() &&
+        !matches.opt_present("c") &&
+        !matches.opt_present("e"));
 
     let addl_libs = matches.opt_strs("L").iter()
         .map(|s| Path::new(s.as_slice())).collect();
@@ -84,7 +90,9 @@ pub fn run() {
         if !repl.run_file(path) {
             std::os::set_exit_status(1);
         }
-    } else {
+    }
+
+    if interactive {
         repl.run();
     }
 }
