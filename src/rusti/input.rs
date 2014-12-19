@@ -341,6 +341,8 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             } else {
                 let stmt = p.parse_stmt(attrs);
 
+                let mut hi = None;
+
                 last_expr = match stmt.node {
                     StmtExpr(ref e, _) => {
                         if classify::expr_requires_semi_to_be_stmt(&**e) {
@@ -356,8 +358,15 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                             !p.eat(&token::Semi)
                         }
                     }
-                    StmtDecl(_, _) => {
-                        p.eat(&token::Semi);
+                    StmtDecl(ref decl, _) => {
+                        if let DeclLocal(_) = decl.node {
+                            p.expect(&token::Semi);
+                        } else {
+                            // Consume the semicolon if there is one,
+                            // but don't add it to the item
+                            hi = Some(p.last_span.hi);
+                            p.eat(&token::Semi);
+                        }
                         false
                     }
                     _ => false
@@ -373,7 +382,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                     _ => &mut input.statements,
                 };
 
-                dest.push(slice(&code, lo, p.last_span.hi));
+                dest.push(slice(&code, lo, hi.unwrap_or(p.last_span.hi)));
             }
         }
 

@@ -28,6 +28,7 @@ fn test_eval() {
     assert_eq!(repl_eval(r#""foo".to_string().as_slice()"#), "foo\n");
     assert_eq!(repl_eval("let a = 1i; a"), "1\n");
     assert_eq!(repl_eval("fn foo() -> int { 2i } foo()"), "2\n");
+    assert_eq!(repl_eval("fn foo() -> int { 3i }; foo()"), "3\n");
 }
 
 #[test]
