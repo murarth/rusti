@@ -26,6 +26,7 @@ fn test_eval() {
     assert_eq!(repl_eval(r#"println!("Hello, world!");"#), "Hello, world!\n");
     assert_eq!(repl_eval(r#"vec![1i, 2, 3]"#), "[1, 2, 3]\n");
     assert_eq!(repl_eval(r#""foo".to_string().as_slice()"#), "foo\n");
+    assert_eq!(repl_eval("let a = 1i; a"), "1\n");
 }
 
 #[test]

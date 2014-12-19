@@ -356,6 +356,10 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                             !p.eat(&token::Semi)
                         }
                     }
+                    StmtDecl(_, _) => {
+                        p.expect(&token::Semi);
+                        false
+                    }
                     _ => false,
                 };
 
