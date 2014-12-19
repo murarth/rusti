@@ -18,6 +18,7 @@ use std::task::TaskBuilder;
 use super::rustc;
 
 use super::syntax::ast::Decl_::*;
+use super::syntax::ast::MacStmtStyle::*;
 use super::syntax::ast::Stmt_::*;
 use super::syntax::ast::ViewItem_::*;
 use super::syntax::codemap::{BytePos, CodeMap, Span};
@@ -350,14 +351,11 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                         }
                         !p.eat(&token::Semi)
                     }
-                    StmtMac(_, semi) => {
-                        if semi {
-                            false
-                        } else {
-                            p.expect_one_of(&[], &[token::Semi, token::Eof]);
-                            !p.eat(&token::Semi)
-                        }
+                    StmtMac(_, MacStmtWithoutBraces) => {
+                        p.expect_one_of(&[], &[token::Semi, token::Eof]);
+                        !p.eat(&token::Semi)
                     }
+                    StmtMac(_, _) => false,
                     StmtDecl(ref decl, _) => {
                         if let DeclLocal(_) = decl.node {
                             p.expect(&token::Semi);
@@ -379,6 +377,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                             _ => &mut input.items,
                         }
                     },
+                    StmtMac(_, MacStmtWithBraces) => &mut input.items,
                     _ => &mut input.statements,
                 };
 

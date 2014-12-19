@@ -29,6 +29,8 @@ fn test_eval() {
     assert_eq!(repl_eval("let a = 1i; a"), "1\n");
     assert_eq!(repl_eval("fn foo() -> int { 2i } foo()"), "2\n");
     assert_eq!(repl_eval("fn foo() -> int { 3i }; foo()"), "3\n");
+    assert_eq!(repl_eval(
+        "bitflags!{ flags Flags: u32 { const A = 4 } } A.bits"), "4\n");
 }
 
 #[test]
