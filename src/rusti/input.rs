@@ -357,10 +357,10 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                         }
                     }
                     StmtDecl(_, _) => {
-                        p.expect(&token::Semi);
+                        p.eat(&token::Semi);
                         false
                     }
-                    _ => false,
+                    _ => false
                 };
 
                 let dest = match stmt.node {
