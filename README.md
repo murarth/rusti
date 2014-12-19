@@ -61,9 +61,10 @@ rusti=> factorial(5)
 
 `rusti` can also run a file given on the command line.  
 Note that a `rusti` input file is not quite the same as a typical Rust program.
-A typical Rust program expects a function named `main`. A `rusti` program can
-define functions, but it will not implicitly call `main`. Instead, it executes
-all statements not within a function body, just like interactive mode.
+A typical Rust program contains a function named `main`. While a `rusti`
+program can define functions, no functions will be called automatically.
+Instead, all statements not within a function body will be executed sequentially,
+just like interactive mode.
 
 ## Commands
 
