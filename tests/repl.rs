@@ -46,7 +46,7 @@ fn test_rc() {
 #[test]
 fn test_type() {
     assert_eq!(repl_cmd(".type 1i"), "1i = int\n");
-    assert_eq!(repl_cmd(r#".t "hai2u""#), "\"hai2u\" = &str\n");
+    assert_eq!(repl_cmd(r#".t "hai2u""#), "\"hai2u\" = &'static str\n");
     assert_eq!(repl_cmd(".t &1i"), "&1i = &int\n");
     assert_eq!(repl_cmd(".t vec![1u]"), "vec![1u] = collections::vec::Vec<uint>\n");
 }

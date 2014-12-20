@@ -22,8 +22,7 @@ use super::rustc::middle::ty;
 use super::rustc::util::ppaux::Repr;
 
 use super::syntax::{ast, codemap, visit};
-use super::syntax::ast::Stmt_::StmtDecl;
-use super::syntax::ast::Decl_::DeclLocal;
+use super::syntax::ast::Stmt_::StmtSemi;
 use super::syntax::parse::token;
 
 /// Starting prompt
@@ -337,7 +336,7 @@ fn {name}() {{
 }}
 "#
         , name = name
-        , expr = format!(r#"let _ = {{ {} }};"#, expr)
+        , expr = format!("{{ {} }};", expr)
         ).as_slice());
 
         if let Some(t) = self.expr_type(name, prog) {
@@ -357,17 +356,11 @@ impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
             b: &'v ast::Block, _s: codemap::Span, _n: ast::NodeId) {
         if let visit::FkItemFn(ident, _, _, _) = fk {
             if token::get_ident(ident).get() == self.fn_name {
-                // We've turned the expression into "let _ = {};",
-                // so that means we must look at the last statement.
                 if let Some(ref stmt) = b.stmts.last() {
-                    if let StmtDecl(ref decl, _) = stmt.node {
-                        if let DeclLocal(ref local) = decl.node {
-                            if let Some(ref expr) = local.init {
-                                let id = expr.id;
-                                if let Some(ty) = self.ty_cx.node_types.borrow().get(&id) {
-                                    self.result = Some(ty.repr(self.ty_cx));
-                                }
-                            }
+                    if let StmtSemi(ref expr, _) = stmt.node {
+                        let id = expr.id;
+                        if let Some(ty) = self.ty_cx.node_types.borrow().get(&id) {
+                            self.result = Some(ty.repr(self.ty_cx));
                         }
                     }
                 }
