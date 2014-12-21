@@ -229,7 +229,6 @@ impl Repl {
         format!(
 r#"#![allow(dead_code, unused_imports)]
 {attrs}
-extern crate "rustrt" as _rusti_rt;
 {vitems}
 {items}
 {program}
@@ -277,7 +276,7 @@ extern crate "rustrt" as _rusti_rt;
 r#"
 #[no_mangle]
 pub fn {name}() {{
-    let _ = unsafe {{ _rusti_rt::unwind::try(_rusti_inner) }};
+    let _ = unsafe {{ std::rt::unwind::try(_rusti_inner) }};
 }}
 
 fn _rusti_inner() {{

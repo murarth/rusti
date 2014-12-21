@@ -17,7 +17,7 @@ use std::io::fs::PathExtensions;
 use std::io::util::NullWriter;
 use std::mem::transmute;
 use std::os::{getenv_as_bytes, split_paths};
-use std::task::TaskBuilder;
+use std::thread::Builder;
 
 use self::arena::TypedArena;
 
@@ -299,9 +299,9 @@ fn build_exec_options(sysroot: Path, libs: Vec<Path>) -> Options {
 fn compile_input(input: Input, sysroot: Path, libs: Vec<Path>)
         -> Option<(llvm::ModuleRef, Deps)> {
     // Eliminates the useless "task '<...>' panicked" message
-    let task = TaskBuilder::new().stderr(box NullWriter);
+    let task = Builder::new().stderr(box NullWriter);
 
-    let res = task.try(move || {
+    let res = task.spawn(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
 
@@ -334,7 +334,7 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<Path>)
         let llmod = trans.modules[0].llmod;
 
         (llmod, deps)
-    });
+    }).join();
 
     res.ok()
 }
@@ -345,9 +345,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<Path>) -> Op
         where F: Send, R: Send,
         F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
     // Eliminates the useless "task '<...>' panicked" message
-    let task = TaskBuilder::new().stderr(box NullWriter);
+    let task = Builder::new().stderr(box NullWriter);
 
-    let res = task.try(move || {
+    let res = task.spawn(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
 
@@ -368,7 +368,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<Path>) -> Op
         let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arena, id);
 
         f(&analysis)
-    });
+    }).join();
 
     res.ok()
 }

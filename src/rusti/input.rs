@@ -13,7 +13,7 @@ use std::io::{BufferedReader, EndOfFile, File, IoResult, stderr};
 use std::io::util::NullWriter;
 use std::mem::swap;
 use std::str::CowString;
-use std::task::TaskBuilder;
+use std::thread::Builder;
 
 use super::rustc;
 
@@ -268,7 +268,7 @@ pub fn parse_input(line: &str) -> InputResult {
 pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputResult {
     let (tx, rx) = channel();
 
-    let task = TaskBuilder::new().stderr(box NullWriter);
+    let task = Builder::new().stderr(box NullWriter);
 
     // Items are not returned in data structures; nor are they converted back
     // into strings. Instead, to preserve user input formatting, we use
@@ -280,7 +280,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let code = code.to_string();
     let filename = filename.unwrap_or("<input>").to_string();
 
-    let res = task.try(move || {
+    let res = task.spawn(move || {
         let mut input = Input::new();
         let handler = mk_handler(box ErrorEmitter::new(tx, filter));
         let mut sess = new_parse_sess();
@@ -388,7 +388,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
         input.last_expr = last_expr;
 
         input
-    });
+    }).join();
 
     match res {
         Ok(input) => Program(input),
