@@ -101,23 +101,18 @@ pub fn thread_local() -> int {
     assert_eq!(f(), 123);
 }
 
-// LLVM fails with:
-//  LLVM ERROR: Cannot select: [...]: i64 = X86ISD::WrapperRIP [...]
-//  [...]: i64 = TargetGlobalTLSAddress<i8** @_ZN9local_ptr8compiled10RT_TLS_PTR[...]>
-//  In function: _ZN9local_ptr8compiled4take[...]
-#[ignore]
 #[test]
-fn test_task_try() {
+fn test_thread() {
     let mut ee = new_ee(
 r#"
 #[no_mangle]
-pub fn task_try() {
-    let _ = std::task::try(move || {});
+pub fn thread_spawn() {
+    let _ = std::thread::Thread::spawn(|| ()).join();
 }
 "#);
 
-    let f: fn() = unsafe { transmute(ee.get_function("task_try")
-        .expect("could not get fn task_try")) };
+    let f: fn() = unsafe { transmute(ee.get_function("thread_spawn")
+        .expect("could not get fn thread_spawn")) };
 
     f();
 }
