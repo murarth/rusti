@@ -127,9 +127,7 @@ I hope to fix each of them, but some may prove to be large problems to tackle.
   of input and that the values of `mut` items or those with interior mutability
   will be reset to their initial definition on each round of input.  
   This is bad.
-* Some uses of thread-local storage will cause a crash.  
-  This includes channels, some functions within `std::task`,
-  and likely others elsewhere.  
+* Use of `thread_local!` causes a crash.  
   This is bad.
 * `let` declarations are local to the input in which they are defined.  
   They cannot be referenced later and are destroyed after that round of input
