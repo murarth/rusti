@@ -333,10 +333,16 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<Path>)
         assert_eq!(trans.modules.len(), 1);
         let llmod = trans.modules[0].llmod;
 
-        (llmod, deps)
+        // Workaround because raw pointers do not impl Send
+        let modp: uint = unsafe { transmute(llmod) };
+
+        (modp, deps)
     }).join();
 
-    res.ok()
+    match res {
+        Ok((llmod, deps)) => Some((unsafe { transmute(llmod) }, deps)),
+        Err(_) => None,
+    }
 }
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
