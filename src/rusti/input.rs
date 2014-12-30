@@ -238,7 +238,7 @@ pub fn parse_command(line: &str) -> InputResult {
     }
 
     let line = line.slice(1, line.len());
-    let mut words = line.trim_right_chars(' ').splitn(1, ' ');
+    let mut words = line.trim_right_matches(' ').splitn(1, ' ');
 
     let cmd = match words.next() {
         Some(cmd) if !cmd.is_empty() => cmd.to_string(),

@@ -8,7 +8,6 @@
 
 //! Rust code parsing and compilation.
 
-extern crate arena;
 extern crate rustc_driver;
 
 use std::c_str::CString;
@@ -18,8 +17,6 @@ use std::io::util::NullWriter;
 use std::mem::transmute;
 use std::os::{getenv_as_bytes, split_paths};
 use std::thread::Builder;
-
-use self::arena::TypedArena;
 
 use super::rustc;
 use super::rustc::llvm;
@@ -317,9 +314,9 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<Path>)
         let mut forest = ast_map::Forest::new(krate);
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-        let arena = TypedArena::new();
+        let arenas = ty::CtxtArenas::new();
 
-        let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arena, id);
+        let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
 
         let (tcx, trans) = driver::phase_4_translate_to_llvm(analysis);
 
@@ -369,9 +366,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<Path>) -> Op
         let mut forest = ast_map::Forest::new(krate);
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-        let arena = TypedArena::new();
+        let arenas = ty::CtxtArenas::new();
 
-        let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arena, id);
+        let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
 
         f(&analysis)
     }).join();
