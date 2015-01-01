@@ -11,7 +11,6 @@
 extern crate rustc_driver;
 
 use std::c_str::CString;
-use std::cell::RefCell;
 use std::io::fs::PathExtensions;
 use std::io::util::NullWriter;
 use std::mem::transmute;
@@ -45,7 +44,7 @@ pub struct ExecutionEngine {
     ee: llvm::ExecutionEngineRef,
     modules: Vec<llvm::ModuleRef>,
     /// Additional search paths for libraries
-    lib_paths: Vec<Path>,
+    lib_paths: Vec<String>,
     sysroot: Path,
 }
 
@@ -76,13 +75,13 @@ type Deps = Vec<Path>;
 
 impl ExecutionEngine {
     /// Constructs a new `ExecutionEngine` with the given library search paths.
-    pub fn new(libs: Vec<Path>) -> ExecutionEngine {
+    pub fn new(libs: Vec<String>) -> ExecutionEngine {
         ExecutionEngine::new_with_input(String::new(), libs)
     }
 
     /// Constructs a new `ExecutionEngine` with the given starting input
     /// and library search paths.
-    pub fn new_with_input<T>(input: T, libs: Vec<Path>) -> ExecutionEngine
+    pub fn new_with_input<T>(input: T, libs: Vec<String>) -> ExecutionEngine
             where T: IntoInput {
         let sysroot = get_sysroot();
 
@@ -92,11 +91,11 @@ impl ExecutionEngine {
 
         let morestack = morestack_addr();
 
-        assert!(morestack.is_not_null());
+        assert!(!morestack.is_null());
 
         let mm = unsafe { llvm::LLVMRustCreateJITMemoryManager(morestack) };
 
-        assert!(mm.is_not_null());
+        assert!(!mm.is_null());
 
         let ee = unsafe { llvm::LLVMBuildExecutionEngine(llmod, mm) };
 
@@ -178,10 +177,10 @@ impl ExecutionEngine {
             for m in self.modules.iter().rev() {
                 let fv = unsafe { llvm::LLVMGetNamedFunction(*m, s) };
 
-                if fv.is_not_null() {
+                if !fv.is_null() {
                     let fp = unsafe { llvm::LLVMGetPointerToGlobal(self.ee, fv) };
 
-                    assert!(fp.is_not_null());
+                    assert!(!fp.is_null());
 
                     return Some(fp);
                 }
@@ -200,10 +199,10 @@ impl ExecutionEngine {
             for m in self.modules.iter().rev() {
                 let gv = unsafe { llvm::LLVMGetNamedGlobal(*m, s) };
 
-                if gv.is_not_null() {
+                if !gv.is_null() {
                     let gp = unsafe { llvm::LLVMGetPointerToGlobal(self.ee, gv) };
 
-                    assert!(gp.is_not_null());
+                    assert!(!gp.is_null());
 
                     return Some(gp);
                 }
@@ -271,14 +270,16 @@ fn get_sysroot() -> Path {
     panic!("Could not find sysroot");
 }
 
-fn build_exec_options(sysroot: Path, libs: Vec<Path>) -> Options {
+fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
     let mut opts = basic_options();
 
     // librustc derives sysroot from the executable name.
     // Since we are not rustc, we must specify it.
     opts.maybe_sysroot = Some(sysroot);
 
-    opts.addl_lib_search_paths = RefCell::new(libs);
+    for p in libs.iter() {
+        opts.search_paths.add_path(p.as_slice());
+    }
 
     // Prefer faster build times
     opts.optimize = config::No;
@@ -293,7 +294,7 @@ fn build_exec_options(sysroot: Path, libs: Vec<Path>) -> Options {
 ///
 /// Returns the LLVM `ModuleRef` and a series of paths to dynamic libraries
 /// for crates used in the given input.
-fn compile_input(input: Input, sysroot: Path, libs: Vec<Path>)
+fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     // Eliminates the useless "task '<...>' panicked" message
     let task = Builder::new().stderr(box NullWriter);
@@ -344,7 +345,7 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<Path>)
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
 /// the given closure with the resulting `CrateAnalysis`.
-fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<Path>) -> Option<R>
+fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> Option<R>
         where F: Send, R: Send,
         F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
     // Eliminates the useless "task '<...>' panicked" message

@@ -63,8 +63,7 @@ pub fn run() {
         !matches.opt_present("c") &&
         !matches.opt_present("e"));
 
-    let addl_libs = matches.opt_strs("L").iter()
-        .map(|s| Path::new(s.as_slice())).collect();
+    let addl_libs = matches.opt_strs("L");
 
     let mut repl = repl::Repl::new_with_libs(addl_libs);
 

@@ -76,7 +76,7 @@ impl Repl {
     }
 
     /// Constructs a new `Repl` with additional library lookup paths.
-    pub fn new_with_libs(libs: Vec<Path>) -> Repl {
+    pub fn new_with_libs(libs: Vec<String>) -> Repl {
         Repl{
             engine: ExecutionEngine::new(libs),
             attributes: Vec::new(),
