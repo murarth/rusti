@@ -10,7 +10,7 @@
 
 extern crate libc;
 
-use std::c_str::CString;
+use std::c_str::{CString, ToCStr};
 //use std::c_vec::CVec;
 use std::ptr;
 use std::sync::{Once, ONCE_INIT};
@@ -56,7 +56,7 @@ pub fn push_history(line: &str) {
 /// Reads a line from the input stream. The trailing newline is truncated.
 /// Returns `None` if end-of-file is signaled.
 pub fn read_line(prompt: &str) -> Option<String> {
-    INIT_READLINE.doit(init_readline);
+    INIT_READLINE.call_once(init_readline);
 
     let sp = prompt.with_c_str(|p| unsafe { rl_readline(p) });
 

@@ -10,7 +10,7 @@
 
 extern crate rustc_driver;
 
-use std::c_str::CString;
+use std::c_str::{CString, ToCStr};
 use std::io::fs::PathExtensions;
 use std::io::util::NullWriter;
 use std::mem::transmute;
@@ -21,7 +21,7 @@ use super::rustc;
 use super::rustc::llvm;
 use super::rustc::metadata::cstore::RequireDynamic;
 use super::rustc::middle::ty;
-use super::rustc::session::config::{mod, basic_options, build_configuration, Options};
+use super::rustc::session::config::{self, basic_options, build_configuration, Options};
 use super::rustc::session::config::Input;
 use super::rustc::session::build_session;
 use self::rustc_driver::driver;

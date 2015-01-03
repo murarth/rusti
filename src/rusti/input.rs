@@ -13,6 +13,7 @@ use std::io::{BufferedReader, EndOfFile, File, IoResult, stderr};
 use std::io::util::NullWriter;
 use std::mem::swap;
 use std::str::CowString;
+use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
 use super::rustc;
@@ -29,7 +30,7 @@ use super::syntax::diagnostics::registry::Registry;
 use super::syntax::parse::classify;
 use super::syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
 use super::syntax::parse::attr::ParserAttr;
-use super::syntax::parse::token::{mod, keywords};
+use super::syntax::parse::token::{self, keywords};
 
 use super::readline;
 
@@ -178,7 +179,7 @@ impl InputReader {
 }
 
 /// Possible results from reading input from `InputReader`
-#[deriving(Show)]
+#[derive(Show)]
 pub enum InputResult {
     /// rusti command as input; (name, rest of line)
     Command(String, Option<String>),
@@ -196,14 +197,14 @@ pub enum InputResult {
 }
 
 /// `ast::ViewItem` type; listed in the order in which they appear in source code
-#[deriving(Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
+#[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
 pub enum ViewItem {
     ExternCrate,
     Use,
 }
 
 /// Represents an input program
-#[deriving(Show)]
+#[derive(Show)]
 pub struct Input {
     /// Module attributes
     pub attributes: Vec<String>,
@@ -429,7 +430,7 @@ impl Emitter for ErrorEmitter {
             code: Option<&str>, lvl: Level) {
         if !self.filter {
             self.emitter.emit(cmsp, msg, code, lvl);
-            self.errors.send(true);
+            self.errors.send(true).unwrap();
             return;
         }
 
@@ -440,10 +441,10 @@ impl Emitter for ErrorEmitter {
                         msg.contains("unterminated block comment") ||
                         msg.contains("unterminated double quote string") ||
                         msg.contains("unterminated raw string") {
-                    self.errors.send(false);
+                    self.errors.send(false).unwrap();
                 } else {
                     self.emitter.emit(cmsp, msg, code, lvl);
-                    self.errors.send(true);
+                    self.errors.send(true).unwrap();
                     // Send any "help" messages that may follow
                     self.filter = false;
                 }
