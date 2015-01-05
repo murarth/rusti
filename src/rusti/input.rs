@@ -12,7 +12,7 @@ use std::borrow::Cow::*;
 use std::io::{BufferedReader, EndOfFile, File, IoResult, stderr};
 use std::io::util::NullWriter;
 use std::mem::swap;
-use std::str::CowString;
+use std::string::CowString;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
