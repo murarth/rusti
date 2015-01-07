@@ -9,14 +9,14 @@
 //! A REPL for the Rust programming language.
 
 #![crate_name = "rusti"]
-#![feature(globs, phase, unsafe_destructor)]
+#![feature(unsafe_destructor)]
 #![unstable]
 
 extern crate getopts;
 extern crate rustc;
 extern crate syntax;
 
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 
 use getopts::{optflag, optopt, optmulti, OptGroup};
 

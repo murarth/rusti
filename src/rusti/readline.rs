@@ -10,9 +10,9 @@
 
 extern crate libc;
 
-use std::c_str::{CString, ToCStr};
-//use std::c_vec::CVec;
+use std::ffi::{c_str_to_bytes, CString};
 use std::ptr;
+use std::str::from_utf8;
 use std::sync::{Once, ONCE_INIT};
 
 use self::libc::{c_char, c_int, /* size_t */};
@@ -48,9 +48,8 @@ fn init_readline() {
 
 /// Pushes a single line into `readline` history.
 pub fn push_history(line: &str) {
-    line.with_c_str(|s| {
-        unsafe { rl_add_history(s) };
-    });
+    let line = CString::from_slice(line.as_bytes());
+    unsafe { rl_add_history(line.as_ptr()) };
 }
 
 /// Reads a line from the input stream. The trailing newline is truncated.
@@ -58,13 +57,14 @@ pub fn push_history(line: &str) {
 pub fn read_line(prompt: &str) -> Option<String> {
     INIT_READLINE.call_once(init_readline);
 
-    let sp = prompt.with_c_str(|p| unsafe { rl_readline(p) });
+    let pr = CString::from_slice(prompt.as_bytes());
+    let sp = unsafe { rl_readline(pr.as_ptr()) };
 
     if sp.is_null() {
         None
     } else {
-        let cs = unsafe { CString::new(sp as *const i8, true) };
-        Some(cs.as_str().expect("not UTF-8 input").to_string())
+        let cs = unsafe { c_str_to_bytes(&sp) };
+        Some(from_utf8(cs).unwrap().to_string())
     }
 }
 
@@ -76,13 +76,14 @@ extern "C" fn completion_fn(text: *const c_char,
         rl_attempted_completion_over = 1;
     }
 
-    let text = unsafe { CString::new(text as *const i8, false) };
+    let text = unsafe { c_str_to_bytes(&text) };
 
-    debug!("completion fn on \"{}\"", text);
+    debug!("completion fn on \"{}\"", from_utf8(text).ok());
 
     // Tab with no text inserts indentation
     if text.is_empty() {
-        "    ".with_c_str(|s| unsafe { rl_insert_text(s) });
+        let sp = CString::from_slice(b"    ");
+        unsafe { rl_insert_text(sp.as_ptr()) };
     }
 
     // TODO: Completion stuff

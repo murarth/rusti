@@ -10,11 +10,12 @@
 
 extern crate rustc_driver;
 
-use std::c_str::{CString, ToCStr};
+use std::ffi::{c_str_to_bytes, CString};
 use std::io::fs::PathExtensions;
 use std::io::util::NullWriter;
 use std::mem::transmute;
 use std::os::{getenv_as_bytes, split_paths};
+use std::path::BytesContainer;
 use std::thread::Builder;
 
 use super::rustc;
@@ -173,21 +174,21 @@ impl ExecutionEngine {
     /// If the function is found, a raw pointer is returned.
     /// If the function is not found, `None` is returned.
     pub fn get_function(&mut self, name: &str) -> Option<*const ()> {
-        name.with_c_str(|s| {
-            for m in self.modules.iter().rev() {
-                let fv = unsafe { llvm::LLVMGetNamedFunction(*m, s) };
+        let s = CString::from_slice(name.as_bytes());
 
-                if !fv.is_null() {
-                    let fp = unsafe { llvm::LLVMGetPointerToGlobal(self.ee, fv) };
+        for m in self.modules.iter().rev() {
+            let fv = unsafe { llvm::LLVMGetNamedFunction(*m, s.as_ptr()) };
 
-                    assert!(!fp.is_null());
+            if !fv.is_null() {
+                let fp = unsafe { llvm::LLVMGetPointerToGlobal(self.ee, fv) };
 
-                    return Some(fp);
-                }
+                assert!(!fp.is_null());
+
+                return Some(fp);
             }
+        }
 
-            None
-        })
+        None
     }
 
     /// Searches for the named global in the set of loaded modules,
@@ -195,21 +196,21 @@ impl ExecutionEngine {
     /// If the global is found, a raw pointer is returned.
     /// If the global is not found, `None` is returned.
     pub fn get_global(&mut self, name: &str) -> Option<*const ()> {
-        name.with_c_str(|s| {
-            for m in self.modules.iter().rev() {
-                let gv = unsafe { llvm::LLVMGetNamedGlobal(*m, s) };
+        let s = CString::from_slice(name.as_bytes());
 
-                if !gv.is_null() {
-                    let gp = unsafe { llvm::LLVMGetPointerToGlobal(self.ee, gv) };
+        for m in self.modules.iter().rev() {
+            let gv = unsafe { llvm::LLVMGetNamedGlobal(*m, s.as_ptr()) };
 
-                    assert!(!gp.is_null());
+            if !gv.is_null() {
+                let gp = unsafe { llvm::LLVMGetPointerToGlobal(self.ee, gv) };
 
-                    return Some(gp);
-                }
+                assert!(!gp.is_null());
+
+                return Some(gp);
             }
+        }
 
-            None
-        })
+        None
     }
 
     /// Loads all dependencies of compiled code.
@@ -217,14 +218,13 @@ impl ExecutionEngine {
     fn load_deps(&self, deps: &Deps) {
         for path in deps.iter() {
             debug!("loading crate {}", path.display());
-            path.with_c_str(|s| {
-                let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(s) };
+            let s = CString::from_slice(path.container_as_bytes());
+            let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(s.as_ptr()) };
 
-                if res == 0 {
-                    panic!("Failed to load crate {}: {}",
-                        s, llvm_error());
-                }
-            });
+            if res == 0 {
+                panic!("Failed to load crate {}: {}",
+                    s.as_ptr(), llvm_error());
+            }
         }
     }
 }
@@ -239,7 +239,7 @@ impl Drop for ExecutionEngine {
 /// Returns last error from LLVM wrapper code.
 /// Should not be kept around longer than the next LLVM call.
 fn llvm_error() -> CString {
-    unsafe { CString::new(llvm::LLVMRustGetLastError() as *const i8, false) }
+    CString::from_slice(unsafe { c_str_to_bytes(&llvm::LLVMRustGetLastError()) })
 }
 
 /// `rustc` uses its own executable path to derive the sysroot.
