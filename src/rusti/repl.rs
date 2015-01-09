@@ -109,12 +109,12 @@ impl Repl {
 
             match res {
                 Command(name, args) => {
-                    debug!("read command: {} {}", name, args);
+                    debug!("read command: {} {:?}", name, args);
 
                     self.handle_command(name, args);
                 },
                 Program(input) => {
-                    debug!("read program: {}", input);
+                    debug!("read program: {:?}", input);
 
                     more = false;
                     self.handle_input(input);
@@ -227,7 +227,7 @@ impl Repl {
         let items = items.connect("\n");
 
         format!(
-r#"#![allow(dead_code, unused_imports)]
+r#"#![allow(dead_code, unused_imports, unstable)]
 {attrs}
 {vitems}
 {items}
@@ -266,7 +266,7 @@ r#"#![allow(dead_code, unused_imports)]
 
         if input.last_expr && !input.statements.is_empty() {
             let stmt = input.statements.last_mut().unwrap();
-            *stmt = format!(r#"println!("{{}}", {{ {} }});"#, stmt);
+            *stmt = format!(r#"println!("{{:?}}", {{ {} }});"#, stmt);
         }
 
         let stmts = input.statements.connect("\n");

@@ -11,6 +11,7 @@
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
 #![unstable]
+#![allow(unstable)]
 
 extern crate getopts;
 extern crate rustc;

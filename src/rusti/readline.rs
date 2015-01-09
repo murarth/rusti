@@ -78,7 +78,7 @@ extern "C" fn completion_fn(text: *const c_char,
 
     let text = unsafe { c_str_to_bytes(&text) };
 
-    debug!("completion fn on \"{}\"", from_utf8(text).ok());
+    debug!("completion fn on \"{:?}\"", from_utf8(text).ok());
 
     // Tab with no text inserts indentation
     if text.is_empty() {

@@ -34,17 +34,17 @@ If the final statement is an expression, the result will be displayed.
 ```rust
 rusti=> println!("Hello, world!");
 Hello, world!
-rusti=> 2u + 2
-4
-rusti=> range(0u, 10).collect::<Vec<_>>()
-[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+rusti=> 2 + 2
+4i32
+rusti=> (0..5).collect::<Vec<_>>()
+[0i32, 1i32, 2i32, 3i32, 4i32]
 ```
 
 If any delimiters are left open, `rusti` will continue reading input until they are closed.
 Only then will the code be executed.
 
 ```rust
-rusti=> fn factorial(n: uint) -> uint {
+rusti=> fn factorial(n: u32) -> u32 {
 rusti.>     match n {
 rusti.>         0 => 0,
 rusti.>         1 => 1,
@@ -52,11 +52,11 @@ rusti.>         n => n * factorial(n - 1),
 rusti.>     }
 rusti.> }
 rusti=> factorial(3)
-6
+6u32
 rusti=> factorial(4)
-24
+24u32
 rusti=> factorial(5)
-120
+120u32
 ```
 
 `rusti` can also run a file given on the command line.  
@@ -85,7 +85,7 @@ To end the command and run all code, input `.` on its own line.
 
 ```rust
 rusti=> .block
-rusti+> let a = 1i;
+rusti+> let a = 1;
 rusti+> let b = a * 2;
 rusti+> let c = b * 3;
 rusti+> c
@@ -100,19 +100,19 @@ Entering `.q` instead will end the command without running code.
 The `.type` command will display the type of an expression without running it.
 
 ```rust
-rusti=> .type 42i
-42i = int
+rusti=> .type 42
+42 = i32
 rusti=> .t 'x'
 'x' = char
 rusti=> .t "Hello!"
 "Hello!" = &'static str
-rusti=> .t (1i, 2u)
-(1i, 2u) = (int, uint)
-rusti=> fn foo() -> int { 1 }
+rusti=> .t (1i32, 2u32)
+(1i32, 2u32) = (i32, u32)
+rusti=> fn foo() -> i32 { 1 }
 rusti=> .t foo
-foo = fn() -> int
+foo = fn() -> i32
 rusti=> .t foo()
-foo() = int
+foo() = i32
 ```
 
 ## Limitations

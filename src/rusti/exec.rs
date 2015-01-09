@@ -222,8 +222,8 @@ impl ExecutionEngine {
             let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(s.as_ptr()) };
 
             if res == 0 {
-                panic!("Failed to load crate {}: {}",
-                    s.as_ptr(), llvm_error());
+                panic!("Failed to load crate {:?}: {}",
+                    path.display(), llvm_error());
             }
         }
     }
@@ -237,9 +237,9 @@ impl Drop for ExecutionEngine {
 }
 
 /// Returns last error from LLVM wrapper code.
-/// Should not be kept around longer than the next LLVM call.
-fn llvm_error() -> CString {
-    CString::from_slice(unsafe { c_str_to_bytes(&llvm::LLVMRustGetLastError()) })
+fn llvm_error() -> String {
+    String::from_utf8_lossy(
+        unsafe { c_str_to_bytes(&llvm::LLVMRustGetLastError()) }).into_owned()
 }
 
 /// `rustc` uses its own executable path to derive the sysroot.
@@ -297,9 +297,9 @@ fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
 fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     // Eliminates the useless "task '<...>' panicked" message
-    let task = Builder::new().stderr(box NullWriter);
+    let task = Builder::new().stderr(Box::new(NullWriter));
 
-    let res = task.spawn(move || {
+    let res = task.scoped(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
 
@@ -332,13 +332,13 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         let llmod = trans.modules[0].llmod;
 
         // Workaround because raw pointers do not impl Send
-        let modp: uint = unsafe { transmute(llmod) };
+        let modp = llmod as usize;
 
         (modp, deps)
     }).join();
 
     match res {
-        Ok((llmod, deps)) => Some((unsafe { transmute(llmod) }, deps)),
+        Ok((llmod, deps)) => Some((llmod as llvm::ModuleRef, deps)),
         Err(_) => None,
     }
 }
@@ -349,9 +349,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
         where F: Send, R: Send,
         F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
     // Eliminates the useless "task '<...>' panicked" message
-    let task = Builder::new().stderr(box NullWriter);
+    let task = Builder::new().stderr(Box::new(NullWriter));
 
-    let res = task.spawn(move || {
+    let res = task.scoped(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
 

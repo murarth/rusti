@@ -269,21 +269,21 @@ pub fn parse_input(line: &str) -> InputResult {
 pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputResult {
     let (tx, rx) = channel();
 
-    let task = Builder::new().stderr(box NullWriter);
+    let task = Builder::new().stderr(Box::new(NullWriter));
 
     // Items are not returned in data structures; nor are they converted back
     // into strings. Instead, to preserve user input formatting, we use
     // byte offsets to return the input as it was received.
     fn slice(s: &String, lo: BytePos, hi: BytePos) -> String {
-        s.as_slice().slice(lo.0 as uint, hi.0 as uint).to_string()
+        s.as_slice().slice(lo.0 as usize, hi.0 as usize).to_string()
     }
 
     let code = code.to_string();
     let filename = filename.unwrap_or("<input>").to_string();
 
-    let res = task.spawn(move || {
+    let res = task.scoped(move || {
         let mut input = Input::new();
-        let handler = mk_handler(box ErrorEmitter::new(tx, filter));
+        let handler = mk_handler(Box::new(ErrorEmitter::new(tx, filter)));
         let mut sess = new_parse_sess();
 
         sess.span_diagnostic.handler = handler;

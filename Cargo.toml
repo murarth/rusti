@@ -15,3 +15,7 @@ test = false
 name = "rusti"
 doc = false
 test = false
+
+[dependencies]
+getopts = "*"
+log = "*"
