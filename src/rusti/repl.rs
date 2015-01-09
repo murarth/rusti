@@ -330,12 +330,13 @@ fn _rusti_inner() {{
         let name = "_rusti_type";
         let prog = self.build_program(None, format!(
 r#"
+#[allow(path_statements)]
 fn {name}() {{
-{expr}
+{expr} ;
 }}
 "#
         , name = name
-        , expr = format!("{{ {} }};", expr)
+        , expr = expr
         ).as_slice());
 
         if let Some(t) = self.expr_type(name, prog) {
