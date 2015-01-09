@@ -90,7 +90,7 @@ rusti+> let b = a * 2;
 rusti+> let c = b * 3;
 rusti+> c
 rusti+> .
-6
+6i32
 ```
 
 Entering `.q` instead will end the command without running code.
