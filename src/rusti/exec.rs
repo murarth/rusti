@@ -9,6 +9,7 @@
 //! Rust code parsing and compilation.
 
 extern crate rustc_driver;
+extern crate rustc_resolve;
 
 use std::ffi::{c_str_to_bytes, CString};
 use std::io::fs::PathExtensions;
@@ -26,6 +27,7 @@ use super::rustc::session::config::{self, basic_options, build_configuration, Op
 use super::rustc::session::config::Input;
 use super::rustc::session::build_session;
 use self::rustc_driver::driver;
+use self::rustc_resolve::MakeGlobMap;
 
 use super::syntax::ast_map;
 use super::syntax::diagnostics::registry::Registry;
@@ -317,7 +319,8 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
 
         let arenas = ty::CtxtArenas::new();
 
-        let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
+        let analysis = driver::phase_3_run_analysis_passes(
+            sess, ast_map, &arenas, id, MakeGlobMap::No);
 
         let (tcx, trans) = driver::phase_4_translate_to_llvm(analysis);
 
@@ -369,7 +372,8 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
 
         let arenas = ty::CtxtArenas::new();
 
-        let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
+        let analysis = driver::phase_3_run_analysis_passes(
+            sess, ast_map, &arenas, id, MakeGlobMap::No);
 
         f(&analysis)
     }).join();
