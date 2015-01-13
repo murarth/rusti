@@ -10,6 +10,7 @@ fn new_ee(code: &str) -> ExecutionEngine {
     ExecutionEngine::new_with_input(code, Vec::new())
 }
 
+#[ignore]
 #[test]
 fn test_exec() {
     let mut ee = new_ee(
@@ -26,6 +27,7 @@ pub fn hello() -> u32 {
     assert_eq!(f(), 123);
 }
 
+#[ignore]
 #[test]
 fn test_static() {
     let mut ee = new_ee(
@@ -50,6 +52,7 @@ pub fn get_foo() -> u32 {
     assert_eq!(foo_fn(), 12345);
 }
 
+#[ignore]
 #[test]
 fn test_static_mut() {
     let mut ee = new_ee(
@@ -103,6 +106,7 @@ pub fn thread_local() -> u32 {
     assert_eq!(f(), 123);
 }
 
+#[ignore]
 #[test]
 fn test_thread() {
     let mut ee = new_ee(
