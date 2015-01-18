@@ -32,7 +32,8 @@ fn test_eval() {
     assert_eq!(repl_eval("fn foo() -> u32 { 2 } foo()"), "2u32\n");
     assert_eq!(repl_eval("fn foo() -> u32 { 3 }; foo()"), "3u32\n");
     assert_eq!(repl_eval(
-        "bitflags!{ flags Flags: u32 { const A = 4 } } A.bits"), "4u32\n");
+        "#[macro_use] extern crate rustc_bitflags; \
+        bitflags!{ flags Flags: u32 { const A = 4 } } A.bits"), "4u32\n");
 }
 
 #[test]
