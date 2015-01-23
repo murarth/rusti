@@ -19,9 +19,9 @@ use std::thread::Builder;
 use super::rustc;
 
 use super::syntax::ast::Decl_::*;
+use super::syntax::ast::Item_::*;
 use super::syntax::ast::MacStmtStyle::*;
 use super::syntax::ast::Stmt_::*;
-use super::syntax::ast::ViewItem_::*;
 use super::syntax::codemap::{BytePos, CodeMap, Span};
 use super::syntax::diagnostic::{Auto, Emitter, EmitterWriter};
 use super::syntax::diagnostic::{Level, RenderSpan, mk_handler};
@@ -30,12 +30,11 @@ use super::syntax::diagnostics::registry::Registry;
 use super::syntax::parse::classify;
 use super::syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
 use super::syntax::parse::attr::ParserAttr;
-use super::syntax::parse::token::{self, keywords};
+use super::syntax::parse::token;
 
 use super::readline;
 
 pub use self::InputResult::*;
-use self::ViewItem::*;
 
 pub struct FileReader {
     reader: BufferedReader<File>,
@@ -60,7 +59,7 @@ impl FileReader {
                 Err(e) => return InputError(Some(Owned(format!("{}", e)))),
             };
 
-            if line.starts_with(".") {
+            if is_command(&line[]) {
                 if buf.is_empty() {
                     truncate_newline(&mut line);
                     return parse_command(line.as_slice());
@@ -129,7 +128,7 @@ impl InputReader {
 
         readline::push_history(line.as_slice());
 
-        let res = if self.buffer.starts_with(".") {
+        let res = if is_command(&self.buffer[]) {
             parse_command(self.buffer.as_slice())
         } else {
             self.buffer.push('\n');
@@ -166,7 +165,7 @@ impl InputReader {
                 readline::push_history(line.as_slice());
             }
 
-            if line == ".q" {
+            if line == ".q" || line == ":q" {
                 return Empty;
             } else if line == "." {
                 return parse_program(buf.as_slice(), true, None);
@@ -179,7 +178,7 @@ impl InputReader {
 }
 
 /// Possible results from reading input from `InputReader`
-#[derive(Show)]
+#[derive(Debug)]
 pub enum InputResult {
     /// rusti command as input; (name, rest of line)
     Command(String, Option<String>),
@@ -196,20 +195,13 @@ pub enum InputResult {
     InputError(Option<CowString<'static>>),
 }
 
-/// `ast::ViewItem` type; listed in the order in which they appear in source code
-#[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
-pub enum ViewItem {
-    ExternCrate,
-    Use,
-}
-
 /// Represents an input program
-#[derive(Show)]
+#[derive(Debug)]
 pub struct Input {
     /// Module attributes
     pub attributes: Vec<String>,
     /// Module-level view items (`use`, `extern crate`)
-    pub view_items: Vec<(ViewItem, String)>,
+    pub view_items: Vec<String>,
     /// Module-level items (`fn`, `enum`, `type`, `struct`, etc.)
     pub items: Vec<String>,
     /// Inner statements and declarations
@@ -231,19 +223,24 @@ impl Input {
     }
 }
 
+pub fn is_command(line: &str) -> bool {
+    (line.starts_with(".") && !line.starts_with("..")) ||
+        (line.starts_with(":") && !line.starts_with("::"))
+}
+
 /// Parses a line of input as a command.
 /// Returns either a `Command` value or an `InputError` value.
 pub fn parse_command(line: &str) -> InputResult {
-    if !line.starts_with(".") {
-        return InputError(Some(Borrowed("command must begin with `.`")));
+    if !is_command(line) {
+        return InputError(Some(Borrowed("command must begin with `.` or `:`")));
     }
 
-    let line = line.slice(1, line.len());
+    let line = &line[1..];
     let mut words = line.trim_right_matches(' ').splitn(1, ' ');
 
     let cmd = match words.next() {
         Some(cmd) if !cmd.is_empty() => cmd.to_string(),
-        _ => return InputError(Some(Borrowed("expected command after `.`"))),
+        _ => return InputError(Some(Borrowed("expected command name"))),
     };
 
     let args = words.next().map(|s| s.to_string());
@@ -253,7 +250,7 @@ pub fn parse_command(line: &str) -> InputResult {
 
 /// Parses a line of input.
 pub fn parse_input(line: &str) -> InputResult {
-    if line.starts_with(".") {
+    if is_command(line) {
         parse_command(line)
     } else {
         parse_program(line, false, None)
@@ -275,7 +272,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     // into strings. Instead, to preserve user input formatting, we use
     // byte offsets to return the input as it was received.
     fn slice(s: &String, lo: BytePos, hi: BytePos) -> String {
-        s.as_slice().slice(lo.0 as usize, hi.0 as usize).to_string()
+        s[lo.0 as usize .. hi.0 as usize].to_string()
     }
 
     let code = code.to_string();
@@ -319,71 +316,54 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                 sess.span_diagnostic.handler.fatal("expected item after attributes");
             }
 
-            let is_view_item = if p.token.is_keyword(keywords::Use) {
-                true
-            } else if p.token.is_keyword(keywords::Extern) {
-                p.look_ahead(1, |t| t.is_keyword(keywords::Crate))
-            } else if p.token.is_keyword(keywords::Pub) {
-                p.look_ahead(1, |t| t.is_keyword(keywords::Use))
-            } else {
-                false
+            let stmt = p.parse_stmt(attrs);
+
+            let mut hi = None;
+
+            last_expr = match stmt.node {
+                StmtExpr(ref e, _) => {
+                    if classify::expr_requires_semi_to_be_stmt(&**e) {
+                        p.commit_stmt(&[], &[token::Semi, token::Eof]);
+                    }
+                    !p.eat(&token::Semi)
+                }
+                StmtMac(_, MacStmtWithoutBraces) => {
+                    p.expect_one_of(&[], &[token::Semi, token::Eof]);
+                    !p.eat(&token::Semi)
+                }
+                StmtMac(_, _) => false,
+                StmtDecl(ref decl, _) => {
+                    if let DeclLocal(_) = decl.node {
+                        p.expect(&token::Semi);
+                    } else {
+                        // Consume the semicolon if there is one,
+                        // but don't add it to the item
+                        hi = Some(p.last_span.hi);
+                        p.eat(&token::Semi);
+                    }
+                    false
+                }
+                _ => false
             };
 
-            if is_view_item {
-                let vitem = p.parse_view_item(attrs);
-
-                let vi_ty = match vitem.node {
-                    ViewItemExternCrate(..) => ExternCrate,
-                    ViewItemUse(..) => Use,
-                };
-
-                let hi = p.last_span.hi;
-
-                input.view_items.push((vi_ty, slice(&code, lo, hi)));
-            } else {
-                let stmt = p.parse_stmt(attrs);
-
-                let mut hi = None;
-
-                last_expr = match stmt.node {
-                    StmtExpr(ref e, _) => {
-                        if classify::expr_requires_semi_to_be_stmt(&**e) {
-                            p.commit_stmt(&[], &[token::Semi, token::Eof]);
+            let dest = match stmt.node {
+                StmtDecl(ref decl, _) => {
+                    match decl.node {
+                        DeclLocal(..) => &mut input.statements,
+                        DeclItem(ref item) => {
+                            match item.node {
+                                ItemExternCrate(..) | ItemUse(..) =>
+                                    &mut input.view_items,
+                                _ => &mut input.items,
+                            }
                         }
-                        !p.eat(&token::Semi)
                     }
-                    StmtMac(_, MacStmtWithoutBraces) => {
-                        p.expect_one_of(&[], &[token::Semi, token::Eof]);
-                        !p.eat(&token::Semi)
-                    }
-                    StmtMac(_, _) => false,
-                    StmtDecl(ref decl, _) => {
-                        if let DeclLocal(_) = decl.node {
-                            p.expect(&token::Semi);
-                        } else {
-                            // Consume the semicolon if there is one,
-                            // but don't add it to the item
-                            hi = Some(p.last_span.hi);
-                            p.eat(&token::Semi);
-                        }
-                        false
-                    }
-                    _ => false
-                };
+                },
+                StmtMac(_, MacStmtWithBraces) => &mut input.items,
+                _ => &mut input.statements,
+            };
 
-                let dest = match stmt.node {
-                    StmtDecl(ref decl, _) => {
-                        match decl.node {
-                            DeclLocal(..) => &mut input.statements,
-                            _ => &mut input.items,
-                        }
-                    },
-                    StmtMac(_, MacStmtWithBraces) => &mut input.items,
-                    _ => &mut input.statements,
-                };
-
-                dest.push(slice(&code, lo, hi.unwrap_or(p.last_span.hi)));
-            }
+            dest.push(slice(&code, lo, hi.unwrap_or(p.last_span.hi)));
         }
 
         input.last_expr = last_expr;
@@ -419,7 +399,7 @@ impl ErrorEmitter {
         ErrorEmitter{
             errors: tx,
             emitter: EmitterWriter::stderr(Auto,
-                Some(Registry::new(&rustc::DIAGNOSTICS))),
+                Some(Registry::new(&rustc::diagnostics::DIAGNOSTICS))),
             filter: filter,
         }
     }

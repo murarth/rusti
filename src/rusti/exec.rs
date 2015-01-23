@@ -303,7 +303,7 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
 
     let res = task.scoped(move || {
         let opts = build_exec_options(sysroot, libs);
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
+        let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
 
         let cfg = build_configuration(&sess);
 
@@ -356,7 +356,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
 
     let res = task.scoped(move || {
         let opts = build_exec_options(sysroot, libs);
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
+        let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
 
         let cfg = build_configuration(&sess);
 

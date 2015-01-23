@@ -26,14 +26,14 @@ fn repl_file(path: &str) -> String {
 #[test]
 fn test_eval() {
     assert_eq!(repl_eval(r#"println!("Hello, world!");"#), "Hello, world!\n");
-    assert_eq!(repl_eval(r#"vec![1, 2, 3]"#), "[1i32, 2i32, 3i32]\n");
+    assert_eq!(repl_eval(r#"vec![1, 2, 3]"#), "[1, 2, 3]\n");
     assert_eq!(repl_eval(r#""foo".to_string().as_slice()"#), "\"foo\"\n");
-    assert_eq!(repl_eval("let a = 1; a"), "1i32\n");
-    assert_eq!(repl_eval("fn foo() -> u32 { 2 } foo()"), "2u32\n");
-    assert_eq!(repl_eval("fn foo() -> u32 { 3 }; foo()"), "3u32\n");
+    assert_eq!(repl_eval("let a = 1; a"), "1\n");
+    assert_eq!(repl_eval("fn foo() -> u32 { 2 } foo()"), "2\n");
+    assert_eq!(repl_eval("fn foo() -> u32 { 3 }; foo()"), "3\n");
     assert_eq!(repl_eval(
         "#[macro_use] extern crate rustc_bitflags; \
-        bitflags!{ flags Flags: u32 { const A = 4 } } A.bits"), "4u32\n");
+        bitflags!{ flags Flags: u32 { const A = 4 } } A.bits"), "4\n");
 }
 
 #[test]
@@ -50,6 +50,6 @@ fn test_rc() {
 fn test_type() {
     assert_eq!(repl_cmd(".type 1"), "1 = i32\n");
     assert_eq!(repl_cmd(r#".t "hai2u""#), "\"hai2u\" = &'static str\n");
-    assert_eq!(repl_cmd(".t &1"), "&1 = &i32\n");
+    assert_eq!(repl_cmd(":t &1"), "&1 = &i32\n");
     assert_eq!(repl_cmd(".t vec![1u32]"), "vec![1u32] = collections::vec::Vec<u32>\n");
 }

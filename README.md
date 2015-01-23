@@ -35,9 +35,9 @@ If the final statement is an expression, the result will be displayed.
 rusti=> println!("Hello, world!");
 Hello, world!
 rusti=> 2 + 2
-4i32
+4
 rusti=> (0..5).collect::<Vec<_>>()
-[0i32, 1i32, 2i32, 3i32, 4i32]
+[0, 1, 2, 3, 4]
 ```
 
 If any delimiters are left open, `rusti` will continue reading input until they are closed.
@@ -52,11 +52,11 @@ rusti.>         n => n * factorial(n - 1),
 rusti.>     }
 rusti.> }
 rusti=> factorial(3)
-6u32
+6
 rusti=> factorial(4)
-24u32
+24
 rusti=> factorial(5)
-120u32
+120
 ```
 
 `rusti` can also run a file given on the command line.  
@@ -71,7 +71,7 @@ just like interactive mode.
 These are special inputs interpreted by `rusti` that are not directly
 evaluated as Rust code, though they may operate on Rust code.
 
-Commands are invoked by entering a line beginning with `.`, followed by the
+Commands are invoked by entering a line beginning with `.` or `:`, followed by the
 name of the command and, perhaps, some text used by the command.
 
 Command names may be arbitrarily abbreviated.  
@@ -90,7 +90,7 @@ rusti+> let b = a * 2;
 rusti+> let c = b * 3;
 rusti+> c
 rusti+> .
-6i32
+6
 ```
 
 Entering `.q` instead will end the command without running code.

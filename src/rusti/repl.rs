@@ -15,7 +15,7 @@ use std::os;
 
 use super::exec::ExecutionEngine;
 use super::input::{parse_command, parse_program};
-use super::input::{FileReader, Input, InputReader, ViewItem};
+use super::input::{FileReader, Input, InputReader};
 use super::input::InputResult::*;
 
 use super::rustc::middle::ty;
@@ -49,7 +49,7 @@ pub struct Repl {
     /// Module-level attributes applied to every program
     attributes: Vec<String>,
     /// View items compiled into every program
-    view_items: Vec<(ViewItem, String)>,
+    view_items: Vec<String>,
     /// Items compiled into every program
     /// TODO: When type/def-injection is implemented,
     /// it will not be necessary to re-compile all functions on every input.
@@ -189,31 +189,25 @@ impl Repl {
     /// `input` will be ignored.
     fn build_program(&self, input: Option<&Input>, program: &str) -> String {
         let (attrs, vitems, items) = if let Some(input) = input {
-            let attrs = self.attributes.iter().map(|s| s.as_slice())
-                .chain(input.attributes.iter().map(|s| s.as_slice()))
+            let attrs = self.attributes.iter().map(|s| &s[])
+                .chain(input.attributes.iter().map(|s| &s[]))
                 .collect::<Vec<_>>();
 
-            let mut vitems = self.view_items.iter().map(|&(a, ref b)| (a, b.as_slice()))
-                .chain(input.view_items.iter().map(|&(a, ref b)| (a, b.as_slice())))
+            let vitems = self.view_items.iter().map(|s| &s[])
+                .chain(input.view_items.iter().map(|s| &s[]))
                 .collect::<Vec<_>>();
 
-            // Sort `extern crate` before `use`
-            vitems.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
-
-            let items = self.items.iter().map(|s| s.as_slice())
-                .chain(input.items.iter().map(|s| s.as_slice()))
+            let items = self.items.iter().map(|s| &s[])
+                .chain(input.items.iter().map(|s| &s[]))
                 .collect::<Vec<_>>();
 
             (attrs, vitems, items)
         } else {
-            let attrs = self.attributes.iter().map(|s| s.as_slice())
+            let attrs = self.attributes.iter().map(|s| &s[])
                 .collect::<Vec<_>>();
 
-            let mut vitems = self.view_items.iter().map(|&(a, ref b)| (a, b.as_slice()))
+            let vitems = self.view_items.iter().map(|s| &s[])
                 .collect::<Vec<_>>();
-
-            // Sort `extern crate` before `use`
-            vitems.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
             let items = self.items.iter().map(|s| s.as_slice())
                 .collect::<Vec<_>>();
@@ -222,8 +216,7 @@ impl Repl {
         };
 
         let attrs = attrs.connect("\n");
-        let vitems = vitems.iter().map(|&(_, s)| s)
-            .collect::<Vec<_>>().connect("\n");
+        let vitems = vitems.connect("\n");
         let items = items.connect("\n");
 
         format!(
