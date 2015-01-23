@@ -440,6 +440,7 @@ impl Emitter for ErrorEmitter {
                         msg.contains("expected item after attributes") ||
                         msg.contains("unterminated block comment") ||
                         msg.contains("unterminated double quote string") ||
+                        msg.contains("unterminated double quote byte string") ||
                         msg.contains("unterminated raw string") {
                     self.errors.send(false).unwrap();
                 } else {
