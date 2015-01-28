@@ -12,8 +12,8 @@ extern crate rustc_driver;
 extern crate rustc_resolve;
 
 use std::ffi::{c_str_to_bytes, CString};
-use std::io::fs::PathExtensions;
-use std::io::util::NullWriter;
+use std::old_io::fs::PathExtensions;
+use std::old_io::util::NullWriter;
 use std::mem::transmute;
 use std::os::{getenv_as_bytes, split_paths};
 use std::path::BytesContainer;
@@ -315,9 +315,8 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
             id.as_slice(), None).expect("phase_2 returned `None`");
 
         let mut forest = ast_map::Forest::new(krate);
-        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
-
         let arenas = ty::CtxtArenas::new();
+        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
         let analysis = driver::phase_3_run_analysis_passes(
             sess, ast_map, &arenas, id, MakeGlobMap::No);
@@ -368,9 +367,8 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
             id.as_slice(), None).expect("phase_2 returned `None`");
 
         let mut forest = ast_map::Forest::new(krate);
-        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
-
         let arenas = ty::CtxtArenas::new();
+        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
         let analysis = driver::phase_3_run_analysis_passes(
             sess, ast_map, &arenas, id, MakeGlobMap::No);

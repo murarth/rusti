@@ -19,9 +19,9 @@ extern crate syntax;
 
 #[macro_use] extern crate log;
 
-use getopts::{optflag, optopt, optmulti, OptGroup};
+use getopts::Options;
 
-use std::io::fs::PathExtensions;
+use std::old_io::fs::PathExtensions;
 
 pub mod exec;
 pub mod input;
@@ -31,17 +31,17 @@ pub mod repl;
 /// Run `rusti` executable using `os::args`
 pub fn run() {
     let args = std::os::args();
-    let opts = &[
-        optopt("c", "", "Execute a rusti command and exit", "COMMAND"),
-        optopt("e", "", "Execute a one-line program and exit", "PROGRAM"),
-        optflag("h", "help", "Print this help message and exit"),
-        optflag("i", "interactive", "Run rusti interactively even with a file"),
-        optflag("v", "version", "Print version and exit"),
-        optmulti("L", "", "Add a directory to the library search path", "PATH"),
-        optflag("", "no-rc", "Do not run $HOME/.rustirc.rs"),
-    ];
+    let mut opts = Options::new();
 
-    let matches = match getopts::getopts(args.tail(), opts) {
+    opts.optopt("c", "", "Execute a rusti command and exit", "COMMAND");
+    opts.optopt("e", "", "Execute a one-line program and exit", "PROGRAM");
+    opts.optflag("h", "help", "Print this help message and exit");
+    opts.optflag("i", "interactive", "Run rusti interactively even with a file");
+    opts.optflag("v", "version", "Print version and exit");
+    opts.optmulti("L", "", "Add a directory to the library search path", "PATH");
+    opts.optflag("", "no-rc", "Do not run $HOME/.rustirc.rs");
+
+    let matches = match opts.parse(args.tail()) {
         Ok(m) => m,
         Err(e) => {
             println!("{}: {}", args[0], e);
@@ -55,7 +55,7 @@ pub fn run() {
         return;
     }
     if matches.opt_present("help") {
-        print_usage(args[0].as_slice(), opts);
+        print_usage(args[0].as_slice(), &opts);
         return;
     }
 
@@ -107,9 +107,9 @@ pub fn version() -> String {
         option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""))
 }
 
-fn print_usage(arg0: &str, opts: &[OptGroup]) {
-    print!("{}", getopts::usage(format!(
-        "Usage: {} [OPTIONS] [FILE]", arg0).as_slice(), opts));
+fn print_usage(arg0: &str, opts: &Options) {
+    print!("{}", opts.usage(&format!(
+        "Usage: {} [OPTIONS] [FILE]", arg0)[]));
 }
 
 fn print_version() {

@@ -8,8 +8,8 @@
 
 //! Runs Rust code in an encapsulated environment
 
-use std::io::File;
-use std::io::stdio::stdin_raw;
+use std::old_io::File;
+use std::old_io::stdio::stdin_raw;
 use std::mem::transmute;
 use std::os;
 

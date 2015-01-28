@@ -1,6 +1,6 @@
 #![allow(unstable)]
 
-use std::io::process::Command;
+use std::old_io::process::Command;
 
 fn repl_run(args: &[&str]) -> String {
     let rusti = if cfg!(windows) { "target/rusti.exe" } else { "target/rusti" };

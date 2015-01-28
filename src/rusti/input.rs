@@ -9,8 +9,8 @@
 //! Parsing REPL input statements, including Rust code and `rusti` commands.
 
 use std::borrow::Cow::*;
-use std::io::{BufferedReader, EndOfFile, File, IoResult, stderr};
-use std::io::util::NullWriter;
+use std::old_io::{BufferedReader, EndOfFile, File, IoResult, stderr};
+use std::old_io::util::NullWriter;
 use std::mem::swap;
 use std::string::CowString;
 use std::sync::mpsc::{channel, Sender};
