@@ -10,8 +10,8 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
+#![feature(collections, core, io, libc, os, path, rustc_private, std_misc)]
 #![unstable]
-#![allow(unstable)]
 
 extern crate getopts;
 extern crate rustc;
@@ -55,7 +55,7 @@ pub fn run() {
         return;
     }
     if matches.opt_present("help") {
-        print_usage(args[0].as_slice(), &opts);
+        print_usage(&args[0][], &opts);
         return;
     }
 
@@ -81,9 +81,9 @@ pub fn run() {
     }
 
     if let Some(cmd) = matches.opt_str("c") {
-        repl.run_command(cmd.as_slice());
+        repl.run_command(&cmd[]);
     } else if let Some(expr) = matches.opt_str("e") {
-        repl.eval(expr.as_slice());
+        repl.eval(&expr[]);
     } else if !matches.free.is_empty() {
         let path = Path::new(&matches.free[0]);
 

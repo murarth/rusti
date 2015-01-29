@@ -62,18 +62,18 @@ impl FileReader {
             if is_command(&line[]) {
                 if buf.is_empty() {
                     truncate_newline(&mut line);
-                    return parse_command(line.as_slice());
+                    return parse_command(&line[]);
                 } else {
                     self.buffer = line;
                     break;
                 }
             } else {
-                buf.push_str(line.as_slice());
+                buf.push_str(&line[]);
             }
         }
 
         if !buf.is_empty() {
-            parse_program(buf.as_slice(), false,
+            parse_program(&buf[], false,
                 self.reader.get_ref().path().as_str())
         } else {
             Eof
@@ -120,19 +120,19 @@ impl InputReader {
             None => return Eof,
         };
 
-        self.buffer.push_str(line.as_slice());
+        self.buffer.push_str(&line[]);
 
         if self.buffer.is_empty() {
             return Empty;
         }
 
-        readline::push_history(line.as_slice());
+        readline::push_history(&line[]);
 
         let res = if is_command(&self.buffer[]) {
-            parse_command(self.buffer.as_slice())
+            parse_command(&self.buffer[])
         } else {
             self.buffer.push('\n');
-            parse_program(self.buffer.as_slice(), true, None)
+            parse_program(&self.buffer[], true, None)
         };
 
         match res {
@@ -162,16 +162,16 @@ impl InputReader {
             };
 
             if !line.is_empty() {
-                readline::push_history(line.as_slice());
+                readline::push_history(&line[]);
             }
 
             if line == ".q" || line == ":q" {
                 return Empty;
             } else if line == "." {
-                return parse_program(buf.as_slice(), true, None);
+                return parse_program(&buf[], true, None);
             }
 
-            buf.push_str(line.as_slice());
+            buf.push_str(&line[]);
             buf.push('\n');
         }
     }
@@ -280,7 +280,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
     let res = task.scoped(move || {
         let mut input = Input::new();
-        let handler = mk_handler(Box::new(ErrorEmitter::new(tx, filter)));
+        let handler = mk_handler(false, Box::new(ErrorEmitter::new(tx, filter)));
         let mut sess = new_parse_sess();
 
         sess.span_diagnostic.handler = handler;

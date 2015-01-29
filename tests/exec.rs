@@ -1,5 +1,3 @@
-#![allow(unstable)]
-
 extern crate rusti;
 
 use std::mem::transmute;

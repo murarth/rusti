@@ -258,7 +258,7 @@ fn get_sysroot() -> Path {
         let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
 
         debug!("searching for sysroot in PATH {}",
-            String::from_utf8_lossy(path.as_slice()));
+            String::from_utf8_lossy(&path[]));
 
         for mut p in split_paths(path).into_iter() {
             if p.join(rustc).is_file() {
@@ -280,7 +280,7 @@ fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
     opts.maybe_sysroot = Some(sysroot);
 
     for p in libs.iter() {
-        opts.search_paths.add_path(p.as_slice());
+        opts.search_paths.add_path(&p[]);
     }
 
     // Prefer faster build times
@@ -312,7 +312,7 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
-            id.as_slice(), None).expect("phase_2 returned `None`");
+            &id[], None).expect("phase_2 returned `None`");
 
         let mut forest = ast_map::Forest::new(krate);
         let arenas = ty::CtxtArenas::new();
@@ -364,7 +364,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
-            id.as_slice(), None).expect("phase_2 returned `None`");
+            &id[], None).expect("phase_2 returned `None`");
 
         let mut forest = ast_map::Forest::new(krate);
         let arenas = ty::CtxtArenas::new();

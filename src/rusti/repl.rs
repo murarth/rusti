@@ -209,7 +209,7 @@ impl Repl {
             let vitems = self.view_items.iter().map(|s| &s[])
                 .collect::<Vec<_>>();
 
-            let items = self.items.iter().map(|s| s.as_slice())
+            let items = self.items.iter().map(|s| &s[])
                 .collect::<Vec<_>>();
 
             (attrs, vitems, items)
@@ -234,7 +234,7 @@ r#"#![allow(dead_code, unused_imports, unstable)]
 
     /// Runs a single command input.
     fn handle_command(&mut self, cmd: String, args: Option<String>) {
-        match lookup_command(cmd.as_slice()) {
+        match lookup_command(&cmd[]) {
             Some("block") => {
                 if args.is_some() {
                     println!("command `block` takes no arguments");
@@ -265,7 +265,7 @@ r#"#![allow(dead_code, unused_imports, unstable)]
         let stmts = input.statements.connect("\n");
 
         let prog = self.build_program(Some(&input),
-            format!(
+            &format!(
 r#"
 #[no_mangle]
 pub fn {name}() {{
@@ -278,7 +278,7 @@ fn _rusti_inner() {{
 "#
             , name = name
             , stmts = stmts
-            ).as_slice()
+            )[]
         );
 
         if let Some(_) = self.engine.add_module(prog) {
@@ -321,7 +321,7 @@ fn _rusti_inner() {{
 
     fn type_command(&mut self, expr: String) {
         let name = "_rusti_type";
-        let prog = self.build_program(None, format!(
+        let prog = self.build_program(None, &format!(
 r#"
 #[allow(path_statements)]
 fn {name}() {{
@@ -330,7 +330,7 @@ fn {name}() {{
 "#
         , name = name
         , expr = expr
-        ).as_slice());
+        )[]);
 
         if let Some(t) = self.expr_type(name, prog) {
             println!("{} = {}", expr, t);
