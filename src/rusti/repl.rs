@@ -220,7 +220,8 @@ impl Repl {
         let items = items.connect("\n");
 
         format!(
-r#"#![allow(dead_code, unused_imports, unstable)]
+r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
+#![feature(std_misc)]
 {attrs}
 {vitems}
 {items}
