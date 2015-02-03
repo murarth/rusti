@@ -419,6 +419,7 @@ impl Emitter for ErrorEmitter {
                 if msg.contains("un-closed delimiter") ||
                         msg.contains("expected item after attributes") ||
                         msg.contains("unterminated block comment") ||
+                        msg.contains("unterminated block doc-comment") ||
                         msg.contains("unterminated double quote string") ||
                         msg.contains("unterminated double quote byte string") ||
                         msg.contains("unterminated raw string") {
