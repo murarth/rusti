@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, core, io, libc, os, path, rustc_private, std_misc)]
+#![feature(collections, core, env, io, libc, os, path, rustc_private, std_misc)]
 #![unstable]
 
 extern crate getopts;
@@ -28,9 +28,11 @@ pub mod input;
 pub mod readline;
 pub mod repl;
 
-/// Run `rusti` executable using `os::args`
+/// Run `rusti` executable using `env::args`
 pub fn run() {
-    let args = std::os::args();
+    let args = std::env::args()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
     let mut opts = Options::new();
 
     opts.optopt("c", "", "Execute a rusti command and exit", "COMMAND");
@@ -45,7 +47,7 @@ pub fn run() {
         Ok(m) => m,
         Err(e) => {
             println!("{}: {}", args[0], e);
-            std::os::set_exit_status(1);
+            std::env::set_exit_status(1);
             return;
         }
     };
@@ -69,11 +71,11 @@ pub fn run() {
     let mut repl = repl::Repl::new_with_libs(addl_libs);
 
     if !matches.opt_present("no-rc") {
-        if let Some(p) = std::os::homedir() {
+        if let Some(p) = std::env::home_dir() {
             let rc = p.join(".rustirc.rs");
             if rc.is_file() {
                 if !repl.run_file(rc) {
-                    std::os::set_exit_status(1);
+                    std::env::set_exit_status(1);
                     return;
                 }
             }
@@ -88,7 +90,7 @@ pub fn run() {
         let path = Path::new(&matches.free[0]);
 
         if !repl.run_file(path) {
-            std::os::set_exit_status(1);
+            std::env::set_exit_status(1);
         }
     }
 

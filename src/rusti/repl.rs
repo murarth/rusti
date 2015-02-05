@@ -8,10 +8,10 @@
 
 //! Runs Rust code in an encapsulated environment
 
+use std::env::args;
 use std::old_io::File;
 use std::old_io::stdio::stdin_raw;
 use std::mem::transmute;
-use std::os;
 
 use super::exec::ExecutionEngine;
 use super::input::{parse_command, parse_program};
@@ -45,6 +45,8 @@ static COMMANDS: &'static [&'static str] = &[
 
 /// Executes input code and maintains state of persistent items.
 pub struct Repl {
+    /// First entry of `env::args`
+    argv0: String,
     engine: ExecutionEngine,
     /// Module-level attributes applied to every program
     attributes: Vec<String>,
@@ -77,7 +79,12 @@ impl Repl {
 
     /// Constructs a new `Repl` with additional library lookup paths.
     pub fn new_with_libs(libs: Vec<String>) -> Repl {
+        let argv0 = args().next()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "rusti".to_string());
+
         Repl{
+            argv0: argv0,
             engine: ExecutionEngine::new(libs),
             attributes: Vec::new(),
             view_items: Vec::new(),
@@ -152,7 +159,7 @@ impl Repl {
         let f = match File::open(&path) {
             Ok(f) => f,
             Err(e) => {
-                println!("{}: {}", os::args()[0], e);
+                println!("{}: {}", self.argv0, e);
                 return false;
             }
         };
@@ -162,7 +169,7 @@ impl Repl {
         loop {
             if self.read_block {
                 println!("{}: `.block` command is not necessary when running a file",
-                    os::args()[0]);
+                    self.argv0);
                 return false;
             }
 
@@ -172,7 +179,7 @@ impl Repl {
                 Program(input) => self.handle_input(input),
                 Command(name, args) => self.handle_command(name, args),
                 InputError(Some(e)) => {
-                    println!("{}: {}", os::args()[0], e);
+                    println!("{}: {}", self.argv0, e);
                     return false;
                 }
                 InputError(None) => return false,
