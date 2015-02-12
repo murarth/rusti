@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, core, env, io, libc, os, path, rustc_private, std_misc)]
+#![feature(collections, core, env, io, libc, path, rustc_private, std_misc)]
 #![unstable]
 
 extern crate getopts;
@@ -30,9 +30,7 @@ pub mod repl;
 
 /// Run `rusti` executable using `env::args`
 pub fn run() {
-    let args = std::env::args()
-        .map(|s| s.to_string_lossy().into_owned())
-        .collect::<Vec<_>>();
+    let args = std::env::args().collect::<Vec<_>>();
     let mut opts = Options::new();
 
     opts.optopt("c", "", "Execute a rusti command and exit", "COMMAND");

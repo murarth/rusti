@@ -11,7 +11,7 @@
 extern crate rustc_driver;
 extern crate rustc_resolve;
 
-use std::env::{split_paths, var};
+use std::env::{split_paths, var_os};
 use std::ffi::{c_str_to_bytes, CString};
 use std::old_io::fs::PathExtensions;
 use std::old_io::util::NullWriter;
@@ -254,7 +254,7 @@ fn llvm_error() -> String {
 /// e.g. if `/usr/local/bin` is in `PATH` and `/usr/local/bin/rustc` is found,
 /// `/usr/local` will be the sysroot.
 fn get_sysroot() -> Path {
-    if let Some(path) = var("PATH") {
+    if let Some(path) = var_os("PATH") {
         let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
 
         debug!("searching for sysroot in PATH {}",

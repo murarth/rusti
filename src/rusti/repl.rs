@@ -80,7 +80,6 @@ impl Repl {
     /// Constructs a new `Repl` with additional library lookup paths.
     pub fn new_with_libs(libs: Vec<String>) -> Repl {
         let argv0 = args().next()
-            .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "rusti".to_string());
 
         Repl{
