@@ -8,11 +8,11 @@
 
 //! Parsing REPL input statements, including Rust code and `rusti` commands.
 
+use std::borrow::Cow;
 use std::borrow::Cow::*;
 use std::old_io::{BufferedReader, EndOfFile, File, IoResult, stderr};
 use std::old_io::util::NullWriter;
 use std::mem::swap;
-use std::string::CowString;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
@@ -59,21 +59,21 @@ impl FileReader {
                 Err(e) => return InputError(Some(Owned(format!("{}", e)))),
             };
 
-            if is_command(&line[]) {
+            if is_command(&line) {
                 if buf.is_empty() {
                     truncate_newline(&mut line);
-                    return parse_command(&line[]);
+                    return parse_command(&line);
                 } else {
                     self.buffer = line;
                     break;
                 }
             } else {
-                buf.push_str(&line[]);
+                buf.push_str(&line);
             }
         }
 
         if !buf.is_empty() {
-            parse_program(&buf[], false,
+            parse_program(&buf, false,
                 self.reader.get_ref().path().as_str())
         } else {
             Eof
@@ -120,19 +120,19 @@ impl InputReader {
             None => return Eof,
         };
 
-        self.buffer.push_str(&line[]);
+        self.buffer.push_str(&line);
 
         if self.buffer.is_empty() {
             return Empty;
         }
 
-        readline::push_history(&line[]);
+        readline::push_history(&line);
 
-        let res = if is_command(&self.buffer[]) {
-            parse_command(&self.buffer[])
+        let res = if is_command(&self.buffer) {
+            parse_command(&self.buffer)
         } else {
             self.buffer.push('\n');
-            parse_program(&self.buffer[], true, None)
+            parse_program(&self.buffer, true, None)
         };
 
         match res {
@@ -162,16 +162,16 @@ impl InputReader {
             };
 
             if !line.is_empty() {
-                readline::push_history(&line[]);
+                readline::push_history(&line);
             }
 
             if line == ".q" || line == ":q" {
                 return Empty;
             } else if line == "." {
-                return parse_program(&buf[], true, None);
+                return parse_program(&buf, true, None);
             }
 
-            buf.push_str(&line[]);
+            buf.push_str(&line);
             buf.push('\n');
         }
     }
@@ -192,7 +192,7 @@ pub enum InputResult {
     Eof,
     /// Error while parsing input; a Rust parsing error will have printed out
     /// error messages and therefore contain no error message.
-    InputError(Option<CowString<'static>>),
+    InputError(Option<Cow<'static, str>>),
 }
 
 /// Represents an input program
@@ -265,6 +265,7 @@ pub fn parse_input(line: &str) -> InputResult {
 /// and `InputError` will be returned.
 pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputResult {
     let (tx, rx) = channel();
+    let (err_tx, err_rx) = channel();
 
     let task = Builder::new().stderr(Box::new(NullWriter));
 
@@ -278,9 +279,9 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let code = code.to_string();
     let filename = filename.unwrap_or("<input>").to_string();
 
-    let res = task.scoped(move || {
+    let handle = task.spawn(move || {
         let mut input = Input::new();
-        let handler = mk_handler(false, Box::new(ErrorEmitter::new(tx, filter)));
+        let handler = mk_handler(false, Box::new(ErrorEmitter::new(err_tx, filter)));
         let mut sess = new_parse_sess();
 
         sess.span_diagnostic.handler = handler;
@@ -309,7 +310,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
                 p.parse_outer_attributes()
             } else {
-                vec![]
+                Vec::new()
             };
 
             if p.token == token::Eof {
@@ -368,13 +369,15 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
         input.last_expr = last_expr;
 
-        input
-    }).join();
+        tx.send(input).unwrap();
+    }).unwrap();
 
-    match res {
-        Ok(input) => Program(input),
+    match handle.join() {
+        Ok(_) => {
+            Program(rx.recv().unwrap())
+        }
         Err(_) => {
-            if rx.iter().any(|fatal| fatal) {
+            if err_rx.iter().any(|fatal| fatal) {
                 InputError(None)
             } else {
                 More

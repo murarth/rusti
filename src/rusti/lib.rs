@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, core, env, io, libc, path, rustc_private, std_misc)]
+#![feature(collections, env, old_io, libc, old_path, rustc_private, std_misc)]
 #![unstable]
 
 extern crate getopts;
@@ -55,7 +55,7 @@ pub fn run() {
         return;
     }
     if matches.opt_present("help") {
-        print_usage(&args[0][], &opts);
+        print_usage(&args[0], &opts);
         return;
     }
 
@@ -81,9 +81,9 @@ pub fn run() {
     }
 
     if let Some(cmd) = matches.opt_str("c") {
-        repl.run_command(&cmd[]);
+        repl.run_command(&cmd);
     } else if let Some(expr) = matches.opt_str("e") {
-        repl.eval(&expr[]);
+        repl.eval(&expr);
     } else if !matches.free.is_empty() {
         let path = Path::new(&matches.free[0]);
 
@@ -109,7 +109,7 @@ pub fn version() -> String {
 
 fn print_usage(arg0: &str, opts: &Options) {
     print!("{}", opts.usage(&format!(
-        "Usage: {} [OPTIONS] [FILE]", arg0)[]));
+        "Usage: {} [OPTIONS] [FILE]", arg0)));
 }
 
 fn print_version() {

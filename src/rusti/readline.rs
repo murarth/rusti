@@ -10,7 +10,7 @@
 
 extern crate libc;
 
-use std::ffi::{c_str_to_bytes, CString};
+use std::ffi::{CStr, CString};
 use std::ptr;
 use std::str::from_utf8;
 use std::sync::{Once, ONCE_INIT};
@@ -48,7 +48,7 @@ fn init_readline() {
 
 /// Pushes a single line into `readline` history.
 pub fn push_history(line: &str) {
-    let line = CString::from_slice(line.as_bytes());
+    let line = CString::new(line.as_bytes()).unwrap();
     unsafe { rl_add_history(line.as_ptr()) };
 }
 
@@ -57,14 +57,14 @@ pub fn push_history(line: &str) {
 pub fn read_line(prompt: &str) -> Option<String> {
     INIT_READLINE.call_once(init_readline);
 
-    let pr = CString::from_slice(prompt.as_bytes());
+    let pr = CString::new(prompt.as_bytes()).unwrap();
     let sp = unsafe { rl_readline(pr.as_ptr()) };
 
     if sp.is_null() {
         None
     } else {
-        let cs = unsafe { c_str_to_bytes(&sp) };
-        Some(from_utf8(cs).unwrap().to_string())
+        let cs = unsafe { CStr::from_ptr(sp) };
+        Some(from_utf8(cs.to_bytes()).unwrap().to_string())
     }
 }
 
@@ -76,13 +76,13 @@ extern "C" fn completion_fn(text: *const c_char,
         rl_attempted_completion_over = 1;
     }
 
-    let text = unsafe { c_str_to_bytes(&text) };
+    let text = unsafe { CStr::from_ptr(text) };
 
-    debug!("completion fn on \"{:?}\"", from_utf8(text).ok());
+    debug!("completion fn on \"{:?}\"", from_utf8(text.to_bytes()).ok());
 
     // Tab with no text inserts indentation
-    if text.is_empty() {
-        let sp = CString::from_slice(b"    ");
+    if text.to_bytes().is_empty() {
+        let sp = CString::new(b"    ").unwrap();
         unsafe { rl_insert_text(sp.as_ptr()) };
     }
 

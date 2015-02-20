@@ -195,27 +195,27 @@ impl Repl {
     /// `input` will be ignored.
     fn build_program(&self, input: Option<&Input>, program: &str) -> String {
         let (attrs, vitems, items) = if let Some(input) = input {
-            let attrs = self.attributes.iter().map(|s| &s[])
-                .chain(input.attributes.iter().map(|s| &s[]))
+            let attrs = self.attributes.iter().map(|s| &s[..])
+                .chain(input.attributes.iter().map(|s| &s[..]))
                 .collect::<Vec<_>>();
 
-            let vitems = self.view_items.iter().map(|s| &s[])
-                .chain(input.view_items.iter().map(|s| &s[]))
+            let vitems = self.view_items.iter().map(|s| &s[..])
+                .chain(input.view_items.iter().map(|s| &s[..]))
                 .collect::<Vec<_>>();
 
-            let items = self.items.iter().map(|s| &s[])
-                .chain(input.items.iter().map(|s| &s[]))
+            let items = self.items.iter().map(|s| &s[..])
+                .chain(input.items.iter().map(|s| &s[..]))
                 .collect::<Vec<_>>();
 
             (attrs, vitems, items)
         } else {
-            let attrs = self.attributes.iter().map(|s| &s[])
+            let attrs = self.attributes.iter().map(|s| &s[..])
                 .collect::<Vec<_>>();
 
-            let vitems = self.view_items.iter().map(|s| &s[])
+            let vitems = self.view_items.iter().map(|s| &s[..])
                 .collect::<Vec<_>>();
 
-            let items = self.items.iter().map(|s| &s[])
+            let items = self.items.iter().map(|s| &s[..])
                 .collect::<Vec<_>>();
 
             (attrs, vitems, items)
@@ -241,7 +241,7 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
 
     /// Runs a single command input.
     fn handle_command(&mut self, cmd: String, args: Option<String>) {
-        match lookup_command(&cmd[]) {
+        match lookup_command(&cmd) {
             Some("block") => {
                 if args.is_some() {
                     println!("command `block` takes no arguments");
@@ -285,7 +285,7 @@ fn _rusti_inner() {{
 "#
             , name = name
             , stmts = stmts
-            )[]
+            )
         );
 
         if let Some(_) = self.engine.add_module(prog) {
@@ -337,7 +337,7 @@ fn {name}() {{
 "#
         , name = name
         , expr = expr
-        )[]);
+        ));
 
         if let Some(t) = self.expr_type(name, prog) {
             println!("{} = {}", expr, t);

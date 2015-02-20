@@ -12,11 +12,12 @@ extern crate rustc_driver;
 extern crate rustc_resolve;
 
 use std::env::{split_paths, var_os};
-use std::ffi::{c_str_to_bytes, CString};
+use std::ffi::{CStr, CString};
 use std::old_io::fs::PathExtensions;
 use std::old_io::util::NullWriter;
 use std::mem::transmute;
 use std::old_path::BytesContainer;
+use std::sync::mpsc::channel;
 use std::thread::Builder;
 
 use super::rustc;
@@ -165,7 +166,7 @@ impl ExecutionEngine {
     /// Compiles the given input only up to the analysis phase, calling the
     /// given closure with a borrowed reference to the analysis result.
     pub fn with_analysis<F, R, T>(&self, input: T, f: F) -> Option<R>
-            where F: Send, R: Send, T: IntoInput,
+            where F: Send + 'static, R: Send + 'static, T: IntoInput,
             F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
         with_analysis(f, input.into_input(),
             self.sysroot.clone(), self.lib_paths.clone())
@@ -176,7 +177,7 @@ impl ExecutionEngine {
     /// If the function is found, a raw pointer is returned.
     /// If the function is not found, `None` is returned.
     pub fn get_function(&mut self, name: &str) -> Option<*const ()> {
-        let s = CString::from_slice(name.as_bytes());
+        let s = CString::new(name.as_bytes()).unwrap();
 
         for m in self.modules.iter().rev() {
             let fv = unsafe { llvm::LLVMGetNamedFunction(*m, s.as_ptr()) };
@@ -198,7 +199,7 @@ impl ExecutionEngine {
     /// If the global is found, a raw pointer is returned.
     /// If the global is not found, `None` is returned.
     pub fn get_global(&mut self, name: &str) -> Option<*const ()> {
-        let s = CString::from_slice(name.as_bytes());
+        let s = CString::new(name.as_bytes()).unwrap();
 
         for m in self.modules.iter().rev() {
             let gv = unsafe { llvm::LLVMGetNamedGlobal(*m, s.as_ptr()) };
@@ -220,7 +221,7 @@ impl ExecutionEngine {
     fn load_deps(&self, deps: &Deps) {
         for path in deps.iter() {
             debug!("loading crate {}", path.display());
-            let s = CString::from_slice(path.container_as_bytes());
+            let s = CString::new(path.container_as_bytes()).unwrap();
             let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(s.as_ptr()) };
 
             if res == 0 {
@@ -241,7 +242,8 @@ impl Drop for ExecutionEngine {
 /// Returns last error from LLVM wrapper code.
 fn llvm_error() -> String {
     String::from_utf8_lossy(
-        unsafe { c_str_to_bytes(&llvm::LLVMRustGetLastError()) }).into_owned()
+        unsafe { CStr::from_ptr(llvm::LLVMRustGetLastError()).to_bytes() })
+        .into_owned()
 }
 
 /// `rustc` uses its own executable path to derive the sysroot.
@@ -280,7 +282,7 @@ fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
     opts.maybe_sysroot = Some(sysroot);
 
     for p in libs.iter() {
-        opts.search_paths.add_path(&p[]);
+        opts.search_paths.add_path(&p);
     }
 
     // Prefer faster build times
@@ -288,6 +290,12 @@ fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
 
     // Don't require a `main` function
     opts.crate_types = vec![config::CrateTypeDylib];
+
+    // On Windows, LLVM needs to be told explicitly to generate in-memory code
+    // in the ELF format.
+    if cfg!(windows) {
+        opts.target_triple = format!("{}-elf", config::host_triple());
+    }
 
     opts
 }
@@ -300,8 +308,9 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     // Eliminates the useless "task '<...>' panicked" message
     let task = Builder::new().stderr(Box::new(NullWriter));
+    let (tx, rx) = channel();
 
-    let res = task.scoped(move || {
+    let handle = task.spawn(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
 
@@ -312,7 +321,7 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
-            &id[], None).expect("phase_2 returned `None`");
+            &id, None).expect("phase_2 returned `None`");
 
         let mut forest = ast_map::Forest::new(krate);
         let arenas = ty::CtxtArenas::new();
@@ -336,24 +345,27 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         // Workaround because raw pointers do not impl Send
         let modp = llmod as usize;
 
-        (modp, deps)
-    }).join();
+        tx.send((modp, deps)).unwrap();
+    }).unwrap();
 
-    match res {
-        Ok((llmod, deps)) => Some((llmod as llvm::ModuleRef, deps)),
-        Err(_) => None,
+    if let Err(_) = handle.join() {
+        return None;
     }
+
+    let (llmod, deps) = rx.recv().unwrap();
+    Some((llmod as llvm::ModuleRef, deps))
 }
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
 /// the given closure with the resulting `CrateAnalysis`.
 fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> Option<R>
-        where F: Send, R: Send,
+        where F: Send + 'static, R: Send + 'static,
         F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
     // Eliminates the useless "task '<...>' panicked" message
     let task = Builder::new().stderr(Box::new(NullWriter));
+    let (tx, rx) = channel();
 
-    let res = task.scoped(move || {
+    let handle = task.spawn(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
 
@@ -364,7 +376,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
-            &id[], None).expect("phase_2 returned `None`");
+            &id, None).expect("phase_2 returned `None`");
 
         let mut forest = ast_map::Forest::new(krate);
         let arenas = ty::CtxtArenas::new();
@@ -373,8 +385,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> 
         let analysis = driver::phase_3_run_analysis_passes(
             sess, ast_map, &arenas, id, MakeGlobMap::No);
 
-        f(&analysis)
-    }).join();
+        tx.send(f(&analysis)).unwrap();
+    }).unwrap();
 
-    res.ok()
+    let _ = handle.join();
+    rx.recv().ok()
 }
