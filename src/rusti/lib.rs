@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, env, old_io, libc, old_path, rustc_private, std_misc)]
+#![feature(collections, env, old_io, os, libc, old_path, rustc_private, std_misc)]
 #![unstable]
 
 extern crate getopts;
@@ -69,7 +69,7 @@ pub fn run() {
     let mut repl = repl::Repl::new_with_libs(addl_libs);
 
     if !matches.opt_present("no-rc") {
-        if let Some(p) = std::env::home_dir() {
+        if let Some(p) = std::os::homedir() {
             let rc = p.join(".rustirc.rs");
             if rc.is_file() {
                 if !repl.run_file(rc) {
