@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, env, old_io, os, libc, old_path, rustc_private, std_misc)]
+#![feature(collections, exit_status, old_io, os, libc, old_path, rustc_private, std_misc)]
 #![unstable]
 
 extern crate getopts;
@@ -18,6 +18,7 @@ extern crate rustc;
 extern crate syntax;
 
 #[macro_use] extern crate log;
+extern crate env_logger;
 
 use getopts::Options;
 
@@ -30,6 +31,8 @@ pub mod repl;
 
 /// Run `rusti` executable using `env::args`
 pub fn run() {
+    env_logger::init().unwrap();
+
     let args = std::env::args().collect::<Vec<_>>();
     let mut opts = Options::new();
 

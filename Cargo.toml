@@ -17,5 +17,6 @@ doc = false
 test = false
 
 [dependencies]
+env_logger = "*"
 getopts = "*"
 log = "*"

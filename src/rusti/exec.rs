@@ -9,6 +9,7 @@
 //! Rust code parsing and compilation.
 
 extern crate rustc_driver;
+extern crate rustc_lint;
 extern crate rustc_resolve;
 
 use std::env::var;
@@ -306,13 +307,20 @@ fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
 /// for crates used in the given input.
 fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
-    // Eliminates the useless "task '<...>' panicked" message
-    let task = Builder::new().stderr(Box::new(NullWriter));
+    let mut task = Builder::new().name("compile_input".to_string());
+    task = if !log_enabled!(::log::LogLevel::Error) {
+        // Eliminates the useless "task '<...>' panicked" message
+        task.stderr(Box::new(NullWriter))
+    } else {
+        task
+    };
+
     let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
+        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
 
@@ -361,13 +369,19 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
 fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
         F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
-    // Eliminates the useless "task '<...>' panicked" message
-    let task = Builder::new().stderr(Box::new(NullWriter));
+    let mut task = Builder::new().name("with_analysis".to_string());
+    task = if !log_enabled!(::log::LogLevel::Error) {
+        // Eliminates the useless "task '<...>' panicked" message
+        task.stderr(Box::new(NullWriter))
+    } else {
+        task
+    };
     let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
+        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
 
