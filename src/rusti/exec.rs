@@ -12,13 +12,12 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_resolve;
 
-use std::env::var;
-use std::ffi::{CStr, CString};
+use std::env::{split_paths, var_os};
+use std::ffi::{AsOsStr, CStr, CString};
+use std::fs::PathExt;
 use std::mem::transmute;
-use std::old_io::fs::PathExtensions;
 use std::old_io::util::NullWriter;
-use std::old_path::BytesContainer;
-use std::os::split_paths;
+use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread::Builder;
 
@@ -51,7 +50,7 @@ pub struct ExecutionEngine {
     modules: Vec<llvm::ModuleRef>,
     /// Additional search paths for libraries
     lib_paths: Vec<String>,
-    sysroot: Path,
+    sysroot: PathBuf,
 }
 
 /// A value that can be translated into `ExecutionEngine` input
@@ -71,13 +70,13 @@ impl IntoInput for String {
     }
 }
 
-impl IntoInput for Path {
+impl IntoInput for PathBuf {
     fn into_input(self) -> Input {
         Input::File(self)
     }
 }
 
-type Deps = Vec<Path>;
+type Deps = Vec<PathBuf>;
 
 impl ExecutionEngine {
     /// Constructs a new `ExecutionEngine` with the given library search paths.
@@ -223,8 +222,15 @@ impl ExecutionEngine {
     fn load_deps(&self, deps: &Deps) {
         for path in deps.iter() {
             debug!("loading crate {}", path.display());
-            let s = CString::new(path.container_as_bytes()).unwrap();
-            let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(s.as_ptr()) };
+
+            let s = match path.as_os_str().to_str() {
+                Some(s) => s,
+                None => panic!(
+                    "Could not convert crate path to UTF-8 string: {:?}", path)
+            };
+            let cs = CString::new(s).unwrap();
+
+            let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(cs.as_ptr()) };
 
             if res == 0 {
                 panic!("Failed to load crate {:?}: {}",
@@ -257,15 +263,15 @@ fn llvm_error() -> String {
 ///
 /// e.g. if `/usr/local/bin` is in `PATH` and `/usr/local/bin/rustc` is found,
 /// `/usr/local` will be the sysroot.
-fn get_sysroot() -> Path {
-    if let Ok(path) = var("PATH") {
+fn get_sysroot() -> PathBuf {
+    if let Some(path) = var_os("PATH") {
         let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
 
-        debug!("searching for sysroot in PATH {}", path);
+        debug!("searching for sysroot in PATH {:?}", path);
 
         for mut p in split_paths(&path) {
             if p.join(rustc).is_file() {
-                debug!("sysroot from PATH entry {}", p.display());
+                debug!("sysroot from PATH entry {:?}", p);
                 p.pop();
                 return p;
             }
@@ -275,7 +281,7 @@ fn get_sysroot() -> Path {
     panic!("Could not find sysroot");
 }
 
-fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
+fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     let mut opts = basic_options();
 
     // librustc derives sysroot from the executable name.
@@ -305,7 +311,7 @@ fn build_exec_options(sysroot: Path, libs: Vec<String>) -> Options {
 ///
 /// Returns the LLVM `ModuleRef` and a series of paths to dynamic libraries
 /// for crates used in the given input.
-fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
+fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     let mut task = Builder::new().name("compile_input".to_string());
     task = if !log_enabled!(::log::LogLevel::Error) {
@@ -366,7 +372,7 @@ fn compile_input(input: Input, sysroot: Path, libs: Vec<String>)
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
 /// the given closure with the resulting `CrateAnalysis`.
-fn with_analysis<F, R>(f: F, input: Input, sysroot: Path, libs: Vec<String>) -> Option<R>
+fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
         F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
     let mut task = Builder::new().name("with_analysis".to_string());

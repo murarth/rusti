@@ -10,7 +10,8 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, exit_status, old_io, os, libc, old_path, rustc_private, std_misc)]
+#![feature(collections, exit_status, fs, io, old_io, os, libc, path,
+    rustc_private, std_misc)]
 #![unstable]
 
 extern crate getopts;
@@ -22,7 +23,8 @@ extern crate env_logger;
 
 use getopts::Options;
 
-use std::old_io::fs::PathExtensions;
+use std::fs::PathExt;
+use std::path::PathBuf;
 
 pub mod exec;
 pub mod input;
@@ -72,10 +74,10 @@ pub fn run() {
     let mut repl = repl::Repl::new_with_libs(addl_libs);
 
     if !matches.opt_present("no-rc") {
-        if let Some(p) = std::os::homedir() {
+        if let Some(p) = std::env::home_dir() {
             let rc = p.join(".rustirc.rs");
             if rc.is_file() {
-                if !repl.run_file(rc) {
+                if !repl.run_file(&rc) {
                     std::env::set_exit_status(1);
                     return;
                 }
@@ -88,9 +90,9 @@ pub fn run() {
     } else if let Some(expr) = matches.opt_str("e") {
         repl.eval(&expr);
     } else if !matches.free.is_empty() {
-        let path = Path::new(&matches.free[0]);
+        let path = PathBuf::new(&matches.free[0]);
 
-        if !repl.run_file(path) {
+        if !repl.run_file(&path) {
             std::env::set_exit_status(1);
         }
     }

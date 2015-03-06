@@ -10,7 +10,9 @@
 
 use std::borrow::Cow;
 use std::borrow::Cow::*;
-use std::old_io::{BufferedReader, EndOfFile, File, IoResult, stderr};
+use std::ffi::AsOsStr;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 use std::old_io::util::NullWriter;
 use std::mem::swap;
 use std::sync::mpsc::{channel, Sender};
@@ -37,14 +39,14 @@ use super::readline;
 pub use self::InputResult::*;
 
 pub struct FileReader {
-    reader: BufferedReader<File>,
+    reader: BufReader<File>,
     buffer: String,
 }
 
 impl FileReader {
     pub fn new(f: File) -> FileReader {
         FileReader{
-            reader: BufferedReader::new(f),
+            reader: BufReader::new(f),
             buffer: String::new(),
         }
     }
@@ -53,11 +55,16 @@ impl FileReader {
         let mut buf = String::new();
 
         loop {
-            let mut line = match self.read_line() {
-                Ok(line) => line,
-                Err(ref e) if e.kind == EndOfFile => break,
+            let mut line = String::new();
+
+            match self.read_line(&mut line) {
+                Ok(_) => (),
                 Err(e) => return InputError(Some(Owned(format!("{}", e)))),
             };
+
+            if line.is_empty() {
+                break
+            }
 
             if is_command(&line) {
                 if buf.is_empty() {
@@ -74,19 +81,19 @@ impl FileReader {
 
         if !buf.is_empty() {
             parse_program(&buf, false,
-                self.reader.get_ref().path().as_str())
+                self.reader.get_ref().path()
+                    .and_then(|p| p.as_os_str().to_str()))
         } else {
             Eof
         }
     }
 
-    fn read_line(&mut self) -> IoResult<String> {
+    fn read_line(&mut self, buf: &mut String) -> io::Result<()> {
         if self.buffer.is_empty() {
-            self.reader.read_line()
+            self.reader.read_line(buf)
         } else {
-            let mut buf = String::new();
-            swap(&mut buf, &mut self.buffer);
-            Ok(buf)
+            swap(buf, &mut self.buffer);
+            Ok(())
         }
     }
 }

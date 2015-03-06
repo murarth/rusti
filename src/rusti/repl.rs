@@ -9,9 +9,10 @@
 //! Runs Rust code in an encapsulated environment
 
 use std::env::args;
-use std::old_io::File;
+use std::fs::File;
 use std::old_io::stdio::stdin_raw;
 use std::mem::transmute;
+use std::path::Path;
 
 use super::exec::ExecutionEngine;
 use super::input::{parse_command, parse_program};
@@ -154,7 +155,7 @@ impl Repl {
 
     /// Runs rusti input from the named file.
     /// Returns `true` if it was compiled successfully.
-    pub fn run_file(&mut self, path: Path) -> bool {
+    pub fn run_file(&mut self, path: &Path) -> bool {
         let f = match File::open(&path) {
             Ok(f) => f,
             Err(e) => {
