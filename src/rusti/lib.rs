@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, exit_status, fs, io, old_io, os, libc, path,
+#![feature(collections, exit_status, file_path, io, old_io, libc, path, path_ext,
     rustc_private, std_misc)]
 #![unstable]
 

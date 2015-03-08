@@ -1,12 +1,10 @@
-#![feature(old_io)]
-
-use std::old_io::process::Command;
+use std::process::Command;
 
 fn repl_run(args: &[&str]) -> String {
     let rusti = if cfg!(windows) { "target/rusti.exe" } else { "target/rusti" };
 
     match Command::new(rusti).args(args).env("HOME", "data").output() {
-        Ok(out) => String::from_utf8(out.output).unwrap(),
+        Ok(out) => String::from_utf8(out.stdout).unwrap(),
         Err(e) => panic!("failed to spawn process: {}", e)
     }
 }
