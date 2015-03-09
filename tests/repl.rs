@@ -1,7 +1,7 @@
 use std::process::Command;
 
 fn repl_run(args: &[&str]) -> String {
-    let rusti = if cfg!(windows) { "target/rusti.exe" } else { "target/rusti" };
+    let rusti = if cfg!(windows) { "target/debug/rusti.exe" } else { "target/debug/rusti" };
 
     match Command::new(rusti).args(args).env("HOME", "data").output() {
         Ok(out) => String::from_utf8(out.stdout).unwrap(),
