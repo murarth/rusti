@@ -8,14 +8,12 @@
 
 //! Wrapper to GNU Readline library
 
-extern crate libc;
-
 use std::ffi::{CStr, CString};
 use std::ptr;
 use std::str::from_utf8;
 use std::sync::{Once, ONCE_INIT};
 
-use self::libc::{c_char, c_int, /* size_t */};
+use libc::{c_char, c_int, /* size_t */};
 
 static INIT_READLINE: Once = ONCE_INIT;
 

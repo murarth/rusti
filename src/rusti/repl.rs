@@ -10,7 +10,6 @@
 
 use std::env::args;
 use std::fs::File;
-use std::old_io::stdio::stdin_raw;
 use std::mem::transmute;
 use std::path::Path;
 
@@ -129,7 +128,7 @@ impl Repl {
                 Empty => (),
                 More => { more = true; },
                 Eof => {
-                    if stdin_raw().isatty() {
+                    if stdin_tty() {
                         println!("");
                     }
                     break;
@@ -369,3 +368,12 @@ impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
         }
     }
 }
+
+#[cfg(unix)]
+fn stdin_tty() -> bool {
+    use libc::{isatty, STDIN_FILENO};
+    unsafe { isatty(STDIN_FILENO) != 0 }
+}
+
+#[cfg(not(unix))]
+fn stdin_tty() -> bool { false }

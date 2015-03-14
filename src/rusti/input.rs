@@ -13,7 +13,6 @@ use std::borrow::Cow::*;
 use std::ffi::AsOsStr;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
-use std::old_io::util::NullWriter;
 use std::mem::swap;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
@@ -58,13 +57,10 @@ impl FileReader {
             let mut line = String::new();
 
             match self.read_line(&mut line) {
+                Ok(0) => break,
                 Ok(_) => (),
                 Err(e) => return InputError(Some(Owned(format!("{}", e)))),
             };
-
-            if line.is_empty() {
-                break
-            }
 
             if is_command(&line) {
                 if buf.is_empty() {
@@ -88,12 +84,12 @@ impl FileReader {
         }
     }
 
-    fn read_line(&mut self, buf: &mut String) -> io::Result<()> {
+    fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         if self.buffer.is_empty() {
             self.reader.read_line(buf)
         } else {
             swap(buf, &mut self.buffer);
-            Ok(())
+            Ok(buf.len())
         }
     }
 }
@@ -274,7 +270,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let (tx, rx) = channel();
     let (err_tx, err_rx) = channel();
 
-    let task = Builder::new().stderr(Box::new(NullWriter));
+    let task = Builder::new();
 
     // Items are not returned in data structures; nor are they converted back
     // into strings. Instead, to preserve user input formatting, we use
@@ -287,6 +283,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let filename = filename.unwrap_or("<input>").to_string();
 
     let handle = task.spawn(move || {
+        io::set_panic(Box::new(io::sink()));
         let mut input = Input::new();
         let handler = mk_handler(false, Box::new(ErrorEmitter::new(err_tx, filter)));
         let mut sess = new_parse_sess();
