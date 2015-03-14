@@ -18,23 +18,23 @@ use std::mem::swap;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
-use super::rustc;
+use rustc;
 
-use super::syntax::ast::Decl_::*;
-use super::syntax::ast::Item_::*;
-use super::syntax::ast::MacStmtStyle::*;
-use super::syntax::ast::Stmt_::*;
-use super::syntax::codemap::{BytePos, CodeMap, Span};
-use super::syntax::diagnostic::{Auto, Emitter, EmitterWriter};
-use super::syntax::diagnostic::{Level, RenderSpan, mk_handler};
-use super::syntax::diagnostic::Level::*;
-use super::syntax::diagnostics::registry::Registry;
-use super::syntax::parse::classify;
-use super::syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
-use super::syntax::parse::attr::ParserAttr;
-use super::syntax::parse::token;
+use syntax::ast::Decl_::*;
+use syntax::ast::Item_::*;
+use syntax::ast::MacStmtStyle::*;
+use syntax::ast::Stmt_::*;
+use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::diagnostic::{Auto, Emitter, EmitterWriter};
+use syntax::diagnostic::{Level, RenderSpan, mk_handler};
+use syntax::diagnostic::Level::*;
+use syntax::diagnostics::registry::Registry;
+use syntax::parse::classify;
+use syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
+use syntax::parse::attr::ParserAttr;
+use syntax::parse::token;
 
-use super::readline;
+use readline;
 
 pub use self::InputResult::*;
 

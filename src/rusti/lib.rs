@@ -16,6 +16,9 @@
 
 extern crate getopts;
 extern crate rustc;
+extern crate rustc_driver;
+extern crate rustc_lint;
+extern crate rustc_resolve;
 extern crate syntax;
 
 #[macro_use] extern crate log;

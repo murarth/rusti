@@ -8,10 +8,6 @@
 
 //! Rust code parsing and compilation.
 
-extern crate rustc_driver;
-extern crate rustc_lint;
-extern crate rustc_resolve;
-
 use std::env::{split_paths, var_os};
 use std::ffi::{AsOsStr, CStr, CString};
 use std::fs::PathExt;
@@ -21,18 +17,20 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread::Builder;
 
-use super::rustc;
-use super::rustc::llvm;
-use super::rustc::metadata::cstore::RequireDynamic;
-use super::rustc::middle::ty;
-use super::rustc::session::config::{self, basic_options, build_configuration, Options};
-use super::rustc::session::config::Input;
-use super::rustc::session::build_session;
-use self::rustc_driver::driver;
-use self::rustc_resolve::MakeGlobMap;
+use rustc;
+use rustc_lint;
 
-use super::syntax::ast_map;
-use super::syntax::diagnostics::registry::Registry;
+use rustc::llvm;
+use rustc::metadata::cstore::RequireDynamic;
+use rustc::middle::ty;
+use rustc::session::config::{self, basic_options, build_configuration, Options};
+use rustc::session::config::Input;
+use rustc::session::build_session;
+use rustc_driver::driver;
+use rustc_resolve::MakeGlobMap;
+
+use syntax::ast_map;
+use syntax::diagnostics::registry::Registry;
 
 // This seems like a such a simple solution that I'm surprised it works.
 #[link(name = "morestack")]

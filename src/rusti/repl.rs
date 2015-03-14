@@ -14,17 +14,17 @@ use std::old_io::stdio::stdin_raw;
 use std::mem::transmute;
 use std::path::Path;
 
-use super::exec::ExecutionEngine;
-use super::input::{parse_command, parse_program};
-use super::input::{FileReader, Input, InputReader};
-use super::input::InputResult::*;
+use rustc::middle::ty;
+use rustc::util::ppaux::Repr;
 
-use super::rustc::middle::ty;
-use super::rustc::util::ppaux::Repr;
+use syntax::{ast, codemap, visit};
+use syntax::ast::Stmt_::StmtSemi;
+use syntax::parse::token;
 
-use super::syntax::{ast, codemap, visit};
-use super::syntax::ast::Stmt_::StmtSemi;
-use super::syntax::parse::token;
+use exec::ExecutionEngine;
+use input::{parse_command, parse_program};
+use input::{FileReader, Input, InputReader};
+use input::InputResult::*;
 
 /// Starting prompt
 const DEFAULT_PROMPT: &'static str = "rusti=> ";
