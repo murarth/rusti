@@ -270,7 +270,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let (tx, rx) = channel();
     let (err_tx, err_rx) = channel();
 
-    let task = Builder::new();
+    let task = Builder::new().name("parse_program".to_string());
 
     // Items are not returned in data structures; nor are they converted back
     // into strings. Instead, to preserve user input formatting, we use
@@ -283,7 +283,9 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let filename = filename.unwrap_or("<input>").to_string();
 
     let handle = task.spawn(move || {
-        io::set_panic(Box::new(io::sink()));
+        if !log_enabled!(::log::LogLevel::Error) {
+            io::set_panic(Box::new(io::sink()));
+        }
         let mut input = Input::new();
         let handler = mk_handler(false, Box::new(ErrorEmitter::new(err_tx, filter)));
         let mut sess = new_parse_sess();

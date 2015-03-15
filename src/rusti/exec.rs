@@ -316,7 +316,9 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
     let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
-        io::set_panic(Box::new(io::sink()));
+        if !log_enabled!(::log::LogLevel::Error) {
+            io::set_panic(Box::new(io::sink()));
+        }
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -372,7 +374,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
     let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
-        io::set_panic(Box::new(io::sink()));
+        if !log_enabled!(::log::LogLevel::Error) {
+            io::set_panic(Box::new(io::sink()));
+        }
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
