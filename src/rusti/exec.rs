@@ -8,12 +8,12 @@
 
 //! Rust code parsing and compilation.
 
-use std::env::{split_paths, var_os};
 use std::ffi::{AsOsStr, CStr, CString};
-use std::fs::PathExt;
 use std::io;
 use std::mem::transmute;
 use std::path::PathBuf;
+use std::process::Command;
+use std::str::from_utf8;
 use std::sync::mpsc::channel;
 use std::thread::Builder;
 
@@ -252,31 +252,19 @@ fn llvm_error() -> String {
         .into_owned()
 }
 
-/// `rustc` uses its own executable path to derive the sysroot.
-/// Because we're not `rustc`, we have to go looking for the sysroot.
-///
-/// To do this, we search the directories in the `PATH` environment variable
-/// for a file named `rustc` (`rustc.exe` on Windows). Upon finding it,
-/// we use the parent directory of that directory as the sysroot.
-///
-/// e.g. if `/usr/local/bin` is in `PATH` and `/usr/local/bin/rustc` is found,
-/// `/usr/local` will be the sysroot.
+/// Runs `rustc` to ask for its sysroot path.
 fn get_sysroot() -> PathBuf {
-    if let Some(path) = var_os("PATH") {
-        let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
+    let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
+    let output = Command::new(rustc).args(&["--print", "sysroot"])
+        .output().unwrap().stdout;
 
-        debug!("searching for sysroot in PATH {:?}", path);
+    let path = from_utf8(&output)
+        .ok().expect("sysroot is not valid UTF-8").trim_right_matches(
+            |c| c == '\r' || c == '\n');
 
-        for mut p in split_paths(&path) {
-            if p.join(rustc).is_file() {
-                debug!("sysroot from PATH entry {:?}", p);
-                p.pop();
-                return p;
-            }
-        }
-    }
+    debug!("using sysroot: {:?}", path);
 
-    panic!("Could not find sysroot");
+    PathBuf::new(&path)
 }
 
 fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
