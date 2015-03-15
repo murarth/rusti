@@ -11,7 +11,7 @@
 use std::env::args;
 use std::fs::File;
 use std::mem::transmute;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rustc::middle::ty;
 use rustc::util::ppaux::Repr;
@@ -73,18 +73,18 @@ fn lookup_command(name: &str) -> Option<&'static str> {
 
 impl Repl {
     /// Constructs a new `Repl`.
-    pub fn new() -> Repl {
-        Repl::new_with_libs(Vec::new())
+    pub fn new(sysroot: Option<PathBuf>) -> Repl {
+        Repl::new_with_libs(Vec::new(), sysroot)
     }
 
     /// Constructs a new `Repl` with additional library lookup paths.
-    pub fn new_with_libs(libs: Vec<String>) -> Repl {
+    pub fn new_with_libs(libs: Vec<String>, sysroot: Option<PathBuf>) -> Repl {
         let argv0 = args().next()
             .unwrap_or_else(|| "rusti".to_string());
 
         Repl{
             argv0: argv0,
-            engine: ExecutionEngine::new(libs),
+            engine: ExecutionEngine::new(libs, sysroot),
             attributes: Vec::new(),
             view_items: Vec::new(),
             items: Vec::new(),

@@ -78,15 +78,15 @@ type Deps = Vec<PathBuf>;
 
 impl ExecutionEngine {
     /// Constructs a new `ExecutionEngine` with the given library search paths.
-    pub fn new(libs: Vec<String>) -> ExecutionEngine {
-        ExecutionEngine::new_with_input(String::new(), libs)
+    pub fn new(libs: Vec<String>, sysroot: Option<PathBuf>) -> ExecutionEngine {
+        ExecutionEngine::new_with_input(String::new(), libs, sysroot)
     }
 
     /// Constructs a new `ExecutionEngine` with the given starting input
     /// and library search paths.
-    pub fn new_with_input<T>(input: T, libs: Vec<String>) -> ExecutionEngine
+    pub fn new_with_input<T>(input: T, libs: Vec<String>, sysroot: Option<PathBuf>) -> ExecutionEngine
             where T: IntoInput {
-        let sysroot = get_sysroot();
+        let sysroot = sysroot.unwrap_or_else(get_sysroot);
 
         let (llmod, deps) = compile_input(input.into_input(),
             sysroot.clone(), libs.clone())
@@ -255,8 +255,11 @@ fn llvm_error() -> String {
 /// Runs `rustc` to ask for its sysroot path.
 fn get_sysroot() -> PathBuf {
     let rustc = if cfg!(windows) { "rustc.exe" } else { "rustc" };
-    let output = Command::new(rustc).args(&["--print", "sysroot"])
-        .output().unwrap().stdout;
+
+    let output = match Command::new(rustc).args(&["--print", "sysroot"]).output() {
+        Ok(output) => output.stdout,
+        Err(e) => panic!("failed to run rustc: {}", e),
+    };
 
     let path = from_utf8(&output)
         .ok().expect("sysroot is not valid UTF-8").trim_right_matches(

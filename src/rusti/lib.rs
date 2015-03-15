@@ -49,6 +49,7 @@ pub fn run() {
     opts.optflag("v", "version", "Print version and exit");
     opts.optmulti("L", "", "Add a directory to the library search path", "PATH");
     opts.optflag("", "no-rc", "Do not run $HOME/.rustirc.rs");
+    opts.optopt("", "sysroot", "Use an alternate Rust sysroot", "PATH");
 
     let matches = match opts.parse(args.tail()) {
         Ok(m) => m,
@@ -74,8 +75,9 @@ pub fn run() {
         !matches.opt_present("e"));
 
     let addl_libs = matches.opt_strs("L");
+    let sysroot = matches.opt_str("sysroot").map(|s| PathBuf::new(&s));
 
-    let mut repl = repl::Repl::new_with_libs(addl_libs);
+    let mut repl = repl::Repl::new_with_libs(addl_libs, sysroot);
 
     if !matches.opt_present("no-rc") {
         if let Some(p) = std::env::home_dir() {

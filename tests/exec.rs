@@ -5,7 +5,7 @@ use std::mem::transmute;
 use rusti::exec::ExecutionEngine;
 
 fn new_ee(code: &str) -> ExecutionEngine {
-    ExecutionEngine::new_with_input(code, Vec::new())
+    ExecutionEngine::new_with_input(code, Vec::new(), None)
 }
 
 #[ignore]
