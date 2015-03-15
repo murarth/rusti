@@ -155,10 +155,11 @@ impl Repl {
     /// Runs rusti input from the named file.
     /// Returns `true` if it was compiled successfully.
     pub fn run_file(&mut self, path: &Path) -> bool {
-        let f = match File::open(&path) {
+        let f = match File::open(path) {
             Ok(f) => f,
             Err(e) => {
-                println!("{}: {}", self.argv0, e);
+                println!("{}: failed to open {}: {}",
+                    self.argv0, path.display(), e);
                 return false;
             }
         };
