@@ -11,7 +11,7 @@
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
 #![feature(collections, exit_status, file_path, libc, path_ext,
-    rustc_private, set_panic, std_misc)]
+    rustc_private, set_stdio, std_misc)]
 #![unstable]
 
 extern crate getopts;

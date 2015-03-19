@@ -307,23 +307,18 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
             let lo = p.span.lo;
 
-            let attrs = if p.token == token::Pound {
+            if p.token == token::Pound {
                 if p.look_ahead(1, |t| *t == token::Not) {
                     let _ = p.parse_attribute(true);
                     input.attributes.push(slice(&code, lo, p.last_span.hi));
                     continue;
                 }
-
-                p.parse_outer_attributes()
-            } else {
-                Vec::new()
-            };
-
-            if p.token == token::Eof {
-                sess.span_diagnostic.handler.fatal("expected item after attributes");
             }
 
-            let stmt = p.parse_stmt(attrs);
+            let stmt = match p.parse_stmt() {
+                None => break,
+                Some(stmt) => stmt,
+            };
 
             let mut hi = None;
 
