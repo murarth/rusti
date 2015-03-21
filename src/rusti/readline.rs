@@ -80,7 +80,7 @@ extern "C" fn completion_fn(text: *const c_char,
 
     // Tab with no text inserts indentation
     if text.to_bytes().is_empty() {
-        let sp = CString::new(b"    ").unwrap();
+        let sp = CString::new(&b"    "[..]).unwrap();
         unsafe { rl_insert_text(sp.as_ptr()) };
     }
 
