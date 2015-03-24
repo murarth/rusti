@@ -34,8 +34,9 @@ use syntax::parse::attr::ParserAttr;
 use syntax::parse::token;
 
 use readline;
+use repl::{lookup_command, CmdArgs};
 
-pub use self::InputResult::*;
+use self::InputResult::*;
 
 pub struct FileReader {
     reader: BufReader<File>,
@@ -234,20 +235,32 @@ pub fn parse_command(line: &str, filter: bool) -> InputResult {
     let line = &line[1..];
     let mut words = line.trim_right().splitn(1, ' ');
 
-    let cmd = match words.next() {
-        Some(cmd) if !cmd.is_empty() => cmd.to_string(),
+    let name = match words.next() {
+        Some(name) if !name.is_empty() => name,
         _ => return InputError(Some(Borrowed("expected command name"))),
     };
 
-    match words.next() {
-        None => Command(cmd, None),
-        Some(args) => {
-            let args = args.to_string();
-            match parse_program(&args, filter, None) {
-                Program(_) => Command(cmd, Some(args)),
+    let cmd = match lookup_command(name) {
+        Some(cmd) => cmd,
+        None => return InputError(Some(Owned(
+            format!("unrecognized command: {}", name))))
+    };
+
+    let args = words.next();
+
+    match cmd.accepts {
+        CmdArgs::Nothing if args.is_some() => InputError(
+            Some(Owned(format!("command `{}` takes no arguments", cmd.name)))),
+        CmdArgs::Expr if args.is_none() => InputError(
+            Some(Owned(format!("command `{}` expects an expression", cmd.name)))),
+        CmdArgs::Expr => {
+            let args = args.unwrap();
+            match parse_program(args, filter, None) {
+                Program(_) => Command(name.to_string(), Some(args.to_string())),
                 i => i,
             }
         }
+        _ => Command(name.to_string(), args.map(|s| s.to_string()))
     }
 }
 

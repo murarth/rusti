@@ -23,7 +23,7 @@ use syntax::parse::token;
 use exec::ExecutionEngine;
 use input::{parse_command, parse_program};
 use input::{FileReader, Input, InputReader};
-use input::InputResult::*;
+use input::InputResult::{Command, Program, Empty, More, Eof, InputError};
 
 /// Starting prompt
 const DEFAULT_PROMPT: &'static str = "rusti=> ";
@@ -36,18 +36,40 @@ const BLOCK_PROMPT: &'static str = "rusti+> ";
 //     def <name>; shows the definition of type or fn
 //     doc <name>; links to rustdoc page for name
 
-struct CommandDef {
-    name: &'static str,
-    args: Option<&'static str>,
-    help: &'static str,
+/// Describes what type of arguments, if any, a command may accept.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CmdArgs {
+    /// No arguments
+    Nothing,
+    /// Optional unprocessed text may be accepted
+    Text,
+    /// A Rust expression is required
+    Expr,
+}
+
+/// Represents a REPL command definition
+#[derive(Debug)]
+pub struct CommandDef {
+    pub name: &'static str,
+    pub args: Option<&'static str>,
+    pub accepts: CmdArgs,
+    pub help: &'static str,
 }
 
 /// List of commands
 static COMMANDS: &'static [CommandDef] = &[
-    CommandDef{name: "block", args: None, help: "Run a multi-line block of code, terminated by `.`"},
-    CommandDef{name: "help", args: Some("[command]"), help: "Show help for commands"},
-    CommandDef{name: "print", args: Some("<expr>"), help: "Print expression using fmt::Display"},
-    CommandDef{name: "type", args: Some("<expr>"), help: "Show the type of expr"},
+    CommandDef{name: "block", args: None,
+        accepts: CmdArgs::Nothing,
+        help: "Run a multi-line block of code, terminated by `.`"},
+    CommandDef{name: "help", args: Some("[command]"),
+        accepts: CmdArgs::Text,
+        help: "Show help for commands"},
+    CommandDef{name: "print", args: Some("<expr>"),
+        accepts: CmdArgs::Expr,
+        help: "Print expression using fmt::Display"},
+    CommandDef{name: "type", args: Some("<expr>"),
+        accepts: CmdArgs::Expr,
+        help: "Show the type of expr"},
 ];
 
 /// Executes input code and maintains state of persistent items.
@@ -69,7 +91,7 @@ pub struct Repl {
 
 /// Looks up a command name by what may be an abbreviated prefix.
 /// Returns the `CommandDef` structure if one is found.
-fn lookup_command(name: &str) -> Option<&'static CommandDef> {
+pub fn lookup_command(name: &str) -> Option<&'static CommandDef> {
     for cmd in COMMANDS.iter() {
         if cmd.name.starts_with(name) {
             return Some(cmd);
@@ -251,11 +273,7 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
     fn handle_command(&mut self, cmd: String, args: Option<String>) {
         match lookup_command(&cmd).map(|c| c.name) {
             Some("block") => {
-                if args.is_some() {
-                    println!("command `block` takes no arguments");
-                } else {
-                    self.read_block = true;
-                }
+                self.read_block = true;
             },
             Some("help") => {
                 self.help_command(args.as_ref().map(|s| &s[..]));
