@@ -64,8 +64,7 @@ impl FileReader {
 
             if is_command(&line) {
                 if buf.is_empty() {
-                    truncate_newline(&mut line);
-                    return parse_command(&line);
+                    return parse_command(&line, true);
                 } else {
                     self.buffer = line;
                     break;
@@ -91,13 +90,6 @@ impl FileReader {
             swap(buf, &mut self.buffer);
             Ok(buf.len())
         }
-    }
-}
-
-fn truncate_newline(s: &mut String) {
-    if s.ends_with("\n") {
-        let n = s.len() - 1;
-        s.truncate(n);
     }
 }
 
@@ -132,7 +124,7 @@ impl InputReader {
         readline::push_history(&line);
 
         let res = if is_command(&self.buffer) {
-            parse_command(&self.buffer)
+            parse_command(&self.buffer, true)
         } else {
             self.buffer.push('\n');
             parse_program(&self.buffer, true, None)
@@ -181,7 +173,7 @@ impl InputReader {
 }
 
 /// Possible results from reading input from `InputReader`
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum InputResult {
     /// rusti command as input; (name, rest of line)
     Command(String, Option<String>),
@@ -199,7 +191,7 @@ pub enum InputResult {
 }
 
 /// Represents an input program
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Input {
     /// Module attributes
     pub attributes: Vec<String>,
@@ -233,30 +225,29 @@ pub fn is_command(line: &str) -> bool {
 
 /// Parses a line of input as a command.
 /// Returns either a `Command` value or an `InputError` value.
-pub fn parse_command(line: &str) -> InputResult {
+pub fn parse_command(line: &str, filter: bool) -> InputResult {
+    debug!("parse_command: {:?}", line);
     if !is_command(line) {
         return InputError(Some(Borrowed("command must begin with `.` or `:`")));
     }
 
     let line = &line[1..];
-    let mut words = line.trim_right_matches(' ').splitn(1, ' ');
+    let mut words = line.trim_right().splitn(1, ' ');
 
     let cmd = match words.next() {
         Some(cmd) if !cmd.is_empty() => cmd.to_string(),
         _ => return InputError(Some(Borrowed("expected command name"))),
     };
 
-    let args = words.next().map(|s| s.to_string());
-
-    Command(cmd, args)
-}
-
-/// Parses a line of input.
-pub fn parse_input(line: &str) -> InputResult {
-    if is_command(line) {
-        parse_command(line)
-    } else {
-        parse_program(line, false, None)
+    match words.next() {
+        None => Command(cmd, None),
+        Some(args) => {
+            let args = args.to_string();
+            match parse_program(&args, filter, None) {
+                Program(_) => Command(cmd, Some(args)),
+                i => i,
+            }
+        }
     }
 }
 

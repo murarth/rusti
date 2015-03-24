@@ -29,7 +29,8 @@ into a directory in your `PATH` environment variable.
 ## Usage
 
 Running `rusti` gives a prompt that accepts (most) any valid Rust code.
-If the final statement is an expression, the result will be displayed.
+If the final statement is an expression, the result will be displayed using the
+`std::fmt::Debug` trait. This is equivalent to `println!("{:?}", expr);`.
 
 ```rust
 rusti=> println!("Hello, world!");
@@ -98,6 +99,11 @@ Entering `.q` instead will end the command without running code.
 ### `.help`
 
 The `.help` command shows usage text for any available commands.
+
+### `.print`
+
+The `.print` command will display the value of an expression, using the
+`std::fmt::Display` trait. This is equivalent to `println!("{}", expr);`.
 
 ### `.type`
 

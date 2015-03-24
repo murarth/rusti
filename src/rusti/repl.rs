@@ -46,6 +46,7 @@ struct CommandDef {
 static COMMANDS: &'static [CommandDef] = &[
     CommandDef{name: "block", args: None, help: "Run a multi-line block of code, terminated by `.`"},
     CommandDef{name: "help", args: Some("[command]"), help: "Show help for commands"},
+    CommandDef{name: "print", args: Some("<expr>"), help: "Print expression using fmt::Display"},
     CommandDef{name: "type", args: Some("<expr>"), help: "Show the type of expr"},
 ];
 
@@ -100,9 +101,8 @@ impl Repl {
 
     /// Evaluates a single round of input, printing the result to `stdout`.
     pub fn eval(&mut self, input: &str) {
-        match parse_program(input, false, None) {
-            Program(i) => self.handle_input(i),
-            _ => (),
+        if let Program(i) = parse_program(input, false, None) {
+            self.handle_input(i, false);
         }
     }
 
@@ -123,13 +123,14 @@ impl Repl {
                 Command(name, args) => {
                     debug!("read command: {} {:?}", name, args);
 
+                    more = false;
                     self.handle_command(name, args);
                 },
                 Program(input) => {
                     debug!("read program: {:?}", input);
 
                     more = false;
-                    self.handle_input(input);
+                    self.handle_input(input, false);
                 },
                 Empty => (),
                 More => { more = true; },
@@ -151,7 +152,7 @@ impl Repl {
 
     /// Runs a single `rusti` command.
     pub fn run_command(&mut self, cmd: &str) {
-        match parse_command(cmd) {
+        match parse_command(cmd, false) {
             Command(name, args) => self.handle_command(name, args),
             InputError(Some(err)) => println!("{}", err),
             _ => ()
@@ -182,7 +183,7 @@ impl Repl {
             let input = input.read_input();
 
             match input {
-                Program(input) => self.handle_input(input),
+                Program(input) => self.handle_input(input, false),
                 Command(name, args) => self.handle_command(name, args),
                 InputError(Some(e)) => {
                     println!("{}: {}", self.argv0, e);
@@ -259,6 +260,13 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
             Some("help") => {
                 self.help_command(args.as_ref().map(|s| &s[..]));
             }
+            Some("print") => {
+                if let Some(args) = args {
+                    self.print_command(args);
+                } else {
+                    println!("command `print` expects an expression");
+                }
+            }
             Some("type") => {
                 if let Some(args) = args {
                     self.type_command(args);
@@ -271,12 +279,18 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
     }
 
     /// Runs a single program input.
-    fn handle_input(&mut self, mut input: Input) {
+    /// If `display` is `true`, an expression will be printed using the
+    /// `Display` trait; otherwise, it is printed as `Debug`.
+    fn handle_input(&mut self, mut input: Input, display: bool) {
         let name = "_rusti_run";
 
         if input.last_expr && !input.statements.is_empty() {
             let stmt = input.statements.last_mut().unwrap();
-            *stmt = format!(r#"println!("{{:?}}", {{ {} }});"#, stmt);
+            if display {
+                *stmt = format!(r#"println!("{{}}", {{ {} }});"#, stmt);
+            } else {
+                *stmt = format!(r#"println!("{{:?}}", {{ {} }});"#, stmt);
+            }
         }
 
         let stmts = input.statements.connect("\n");
@@ -344,6 +358,12 @@ fn _rusti_inner() {{
             }
 
             println!("");
+        }
+    }
+
+    fn print_command(&mut self, expr: String) {
+        if let Program(i) = parse_program(&expr, false, None) {
+            self.handle_input(i, true);
         }
     }
 

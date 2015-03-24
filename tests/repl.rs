@@ -40,6 +40,12 @@ fn test_file() {
 }
 
 #[test]
+fn test_print() {
+    assert_eq!(repl_cmd(".print 1"), "1\n");
+    assert_eq!(repl_cmd(r#".p "Hello!""#), "Hello!\n");
+}
+
+#[test]
 fn test_rc() {
     assert_eq!(repl_run(&["-e", r#"println!("hi, rc!");"#]), "rc says hi\nhi, rc!\n");
 }
