@@ -95,6 +95,10 @@ rusti+> .
 
 Entering `.q` instead will end the command without running code.
 
+### `.help`
+
+The `.help` command shows usage text for any available commands.
+
 ### `.type`
 
 The `.type` command will display the type of an expression without running it.

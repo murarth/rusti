@@ -35,12 +35,18 @@ const BLOCK_PROMPT: &'static str = "rusti+> ";
 // TODO: Implement commands:
 //     def <name>; shows the definition of type or fn
 //     doc <name>; links to rustdoc page for name
-//     help; lists commands and their uses
 
-/// List of command names
-static COMMANDS: &'static [&'static str] = &[
-    "block",
-    "type",
+struct CommandDef {
+    name: &'static str,
+    args: Option<&'static str>,
+    help: &'static str,
+}
+
+/// List of commands
+static COMMANDS: &'static [CommandDef] = &[
+    CommandDef{name: "block", args: None, help: "Run a multi-line block of code, terminated by `.`"},
+    CommandDef{name: "help", args: Some("[command]"), help: "Show help for commands"},
+    CommandDef{name: "type", args: Some("<expr>"), help: "Show the type of expr"},
 ];
 
 /// Executes input code and maintains state of persistent items.
@@ -61,11 +67,11 @@ pub struct Repl {
 }
 
 /// Looks up a command name by what may be an abbreviated prefix.
-/// Returns the full command name. e.g. `"b"` => `Some("block")`
-fn lookup_command(name: &str) -> Option<&'static str> {
+/// Returns the `CommandDef` structure if one is found.
+fn lookup_command(name: &str) -> Option<&'static CommandDef> {
     for cmd in COMMANDS.iter() {
-        if cmd.starts_with(name) {
-            return Some(*cmd);
+        if cmd.name.starts_with(name) {
+            return Some(cmd);
         }
     }
     None
@@ -242,7 +248,7 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
 
     /// Runs a single command input.
     fn handle_command(&mut self, cmd: String, args: Option<String>) {
-        match lookup_command(&cmd) {
+        match lookup_command(&cmd).map(|c| c.name) {
             Some("block") => {
                 if args.is_some() {
                     println!("command `block` takes no arguments");
@@ -250,6 +256,9 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
                     self.read_block = true;
                 }
             },
+            Some("help") => {
+                self.help_command(args.as_ref().map(|s| &s[..]));
+            }
             Some("type") => {
                 if let Some(args) = args {
                     self.type_command(args);
@@ -304,6 +313,37 @@ fn _rusti_inner() {{
             self.attributes.extend(input.attributes.into_iter());
             self.view_items.extend(input.view_items.into_iter());
             self.items.extend(input.items.into_iter());
+        }
+    }
+
+    fn help_command(&self, command: Option<&str>) {
+        if let Some(cmd) = command {
+            match lookup_command(cmd) {
+                None => println!("unrecognized command: {}", cmd),
+                Some(cmd) => {
+                    println!("");
+
+                    match cmd.args {
+                        None => println!("{}", cmd.name),
+                        Some(args) => println!("{} {}", cmd.name, args),
+                    }
+                    println!("  {}", cmd.help);
+                    println!("");
+                }
+            }
+        } else {
+            println!("Available commands:");
+            println!("");
+
+            for cmd in COMMANDS {
+                match cmd.args {
+                    None => println!("  {:<16} {}", cmd.name, cmd.help),
+                    Some(args) => println!("  {:<16} {}",
+                        format!("{} {}", cmd.name, args), cmd.help)
+                }
+            }
+
+            println!("");
         }
     }
 
