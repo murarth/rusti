@@ -409,7 +409,7 @@ fn _rusti_inner() {{
         let name = "_rusti_type";
         let prog = self.build_program(None, &format!(
 r#"
-#[allow(path_statements)]
+#[allow(path_statements, unused_must_use)]
 fn {name}() {{
 {expr} ;
 }}
