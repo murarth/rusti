@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(unsafe_destructor)]
-#![feature(collections, exit_status, file_path, libc, path_ext,
+#![feature(collections, convert, exit_status, file_path, libc, path_ext,
     rustc_private, set_stdio, std_misc)]
 #![unstable]
 
@@ -75,7 +75,7 @@ pub fn run() {
         !matches.opt_present("e"));
 
     let addl_libs = matches.opt_strs("L");
-    let sysroot = matches.opt_str("sysroot").map(|s| PathBuf::new(&s));
+    let sysroot = matches.opt_str("sysroot").map(|s| PathBuf::from(&s));
 
     let mut repl = repl::Repl::new_with_libs(addl_libs, sysroot);
 
@@ -96,7 +96,7 @@ pub fn run() {
     } else if let Some(expr) = matches.opt_str("e") {
         repl.eval(&expr);
     } else if !matches.free.is_empty() {
-        let path = PathBuf::new(&matches.free[0]);
+        let path = PathBuf::from(&matches.free[0]);
 
         if !repl.run_file(&path) {
             std::env::set_exit_status(1);

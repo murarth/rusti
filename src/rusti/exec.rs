@@ -24,7 +24,7 @@ use rustc::llvm;
 use rustc::metadata::cstore::RequireDynamic;
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Options};
-use rustc::session::config::Input;
+use rustc::session::config::{Input, UnstableFeatures};
 use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_resolve::MakeGlobMap;
@@ -267,7 +267,7 @@ fn get_sysroot() -> PathBuf {
 
     debug!("using sysroot: {:?}", path);
 
-    PathBuf::new(&path)
+    PathBuf::from(path)
 }
 
 fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
@@ -287,11 +287,8 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     // Don't require a `main` function
     opts.crate_types = vec![config::CrateTypeDylib];
 
-    // On Windows, LLVM needs to be told explicitly to generate in-memory code
-    // in the ELF format.
-    if cfg!(windows) {
-        opts.target_triple = format!("{}-elf", config::host_triple());
-    }
+    // Allow use of unstable features
+    opts.unstable_features = UnstableFeatures::Default;
 
     opts
 }
