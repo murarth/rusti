@@ -3,7 +3,7 @@ name = "rusti"
 version = "0.0.1"
 dependencies = [
  "env_logger 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "getopts 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -18,20 +18,15 @@ dependencies = [
 
 [[package]]
 name = "getopts"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "libc"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "log"
-version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
