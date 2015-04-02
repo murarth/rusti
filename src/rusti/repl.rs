@@ -438,7 +438,7 @@ impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
                 if let Some(ref stmt) = b.stmts.last() {
                     if let StmtSemi(ref expr, _) = stmt.node {
                         let id = expr.id;
-                        if let Some(ty) = self.ty_cx.node_types.borrow().get(&id) {
+                        if let Some(ty) = self.ty_cx.node_types().get(&id) {
                             self.result = Some(ty.repr(self.ty_cx));
                         }
                     }

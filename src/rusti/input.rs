@@ -233,7 +233,7 @@ pub fn parse_command(line: &str, filter: bool) -> InputResult {
     }
 
     let line = &line[1..];
-    let mut words = line.trim_right().splitn(1, ' ');
+    let mut words = line.trim_right().splitn(2, ' ');
 
     let name = match words.next() {
         Some(name) if !name.is_empty() => name,
