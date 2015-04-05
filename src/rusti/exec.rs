@@ -238,7 +238,6 @@ impl ExecutionEngine {
     }
 }
 
-#[unsafe_destructor]
 impl Drop for ExecutionEngine {
     fn drop(&mut self) {
         unsafe { llvm::LLVMDisposeExecutionEngine(self.ee) };
