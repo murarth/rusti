@@ -28,10 +28,9 @@ use syntax::diagnostic::{Auto, Emitter, EmitterWriter};
 use syntax::diagnostic::{Level, RenderSpan, mk_handler};
 use syntax::diagnostic::Level::*;
 use syntax::diagnostics::registry::Registry;
-use syntax::parse::classify;
+use syntax::parse::{classify, token, PResult};
 use syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
 use syntax::parse::attr::ParserAttr;
-use syntax::parse::token;
 
 use readline;
 use repl::{lookup_command, CmdArgs};
@@ -305,7 +304,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
         while p.token != token::Eof {
             if let token::DocComment(_) = p.token {
-                p.bump();
+                try_fatal(p.bump());
                 continue;
             }
 
@@ -329,23 +328,23 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             last_expr = match stmt.node {
                 StmtExpr(ref e, _) => {
                     if classify::expr_requires_semi_to_be_stmt(&**e) {
-                        p.commit_stmt(&[], &[token::Semi, token::Eof]);
+                        try_fatal(p.commit_stmt(&[], &[token::Semi, token::Eof]));
                     }
-                    !p.eat(&token::Semi)
+                    !try_fatal(p.eat(&token::Semi))
                 }
                 StmtMac(_, MacStmtWithoutBraces) => {
-                    p.expect_one_of(&[], &[token::Semi, token::Eof]);
-                    !p.eat(&token::Semi)
+                    try_fatal(p.expect_one_of(&[], &[token::Semi, token::Eof]));
+                    !try_fatal(p.eat(&token::Semi))
                 }
                 StmtMac(_, _) => false,
                 StmtDecl(ref decl, _) => {
                     if let DeclLocal(_) = decl.node {
-                        p.expect(&token::Semi);
+                        try_fatal(p.expect(&token::Semi));
                     } else {
                         // Consume the semicolon if there is one,
                         // but don't add it to the item
                         hi = Some(p.last_span.hi);
-                        p.eat(&token::Semi);
+                        try_fatal(p.eat(&token::Semi));
                     }
                     false
                 }
@@ -388,6 +387,13 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                 More
             }
         }
+    }
+}
+
+fn try_fatal<T>(r: PResult<T>) -> T {
+    match r {
+        Ok(t) => t,
+        Err(_) => panic!("fatal error")
     }
 }
 
