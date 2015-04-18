@@ -193,7 +193,7 @@ impl Repl {
             }
         };
 
-        let mut input = FileReader::new(f);
+        let mut input = FileReader::new(f, path.to_path_buf());
 
         loop {
             if self.read_block {

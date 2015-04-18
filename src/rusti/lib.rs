@@ -9,7 +9,7 @@
 //! A REPL for the Rust programming language.
 
 #![crate_name = "rusti"]
-#![feature(collections, exit_status, file_path, libc, path_ext,
+#![feature(collections, exit_status, libc, path_ext,
     rustc_private, set_stdio, std_misc)]
 
 extern crate getopts;

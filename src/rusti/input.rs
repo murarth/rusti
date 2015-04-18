@@ -14,6 +14,7 @@ use std::ffi::AsOsStr;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::mem::swap;
+use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
@@ -39,13 +40,15 @@ use self::InputResult::*;
 
 pub struct FileReader {
     reader: BufReader<File>,
+    path: PathBuf,
     buffer: String,
 }
 
 impl FileReader {
-    pub fn new(f: File) -> FileReader {
+    pub fn new(f: File, path: PathBuf) -> FileReader {
         FileReader{
             reader: BufReader::new(f),
+            path: path,
             buffer: String::new(),
         }
     }
@@ -76,8 +79,7 @@ impl FileReader {
 
         if !buf.is_empty() {
             parse_program(&buf, false,
-                self.reader.get_ref().path()
-                    .and_then(|p| p.as_os_str().to_str()))
+                self.path.as_os_str().to_str())
         } else {
             Eof
         }
