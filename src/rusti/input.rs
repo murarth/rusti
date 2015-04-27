@@ -10,7 +10,6 @@
 
 use std::borrow::Cow;
 use std::borrow::Cow::*;
-use std::ffi::AsOsStr;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::mem::swap;
