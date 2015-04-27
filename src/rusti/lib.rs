@@ -10,7 +10,7 @@
 
 #![crate_name = "rusti"]
 #![feature(collections, exit_status, libc, path_ext,
-    rustc_private, set_stdio, std_misc)]
+    rustc_private, set_stdio)]
 
 extern crate getopts;
 extern crate libc;
