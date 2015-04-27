@@ -8,7 +8,7 @@
 
 //! Rust code parsing and compilation.
 
-use std::ffi::{AsOsStr, CStr, CString};
+use std::ffi::{CStr, CString};
 use std::io;
 use std::mem::transmute;
 use std::path::PathBuf;
