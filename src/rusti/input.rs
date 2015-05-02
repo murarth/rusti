@@ -414,7 +414,7 @@ impl ErrorEmitter {
         ErrorEmitter{
             errors: tx,
             emitter: EmitterWriter::stderr(Auto,
-                Some(Registry::new(&rustc::diagnostics::DIAGNOSTICS))),
+                Some(Registry::new(&rustc::DIAGNOSTICS))),
             filter: filter,
         }
     }

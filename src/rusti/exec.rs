@@ -307,7 +307,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             io::set_panic(Box::new(io::sink()));
         }
         let opts = build_exec_options(sysroot, libs);
-        let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
+        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -365,7 +365,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             io::set_panic(Box::new(io::sink()));
         }
         let opts = build_exec_options(sysroot, libs);
-        let sess = build_session(opts, None, Registry::new(&rustc::diagnostics::DIAGNOSTICS));
+        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
