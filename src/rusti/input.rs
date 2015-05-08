@@ -18,6 +18,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
 use rustc;
+use linenoise;
 
 use syntax::ast::Decl_::*;
 use syntax::ast::Item_::*;
@@ -32,7 +33,6 @@ use syntax::parse::{classify, token, PResult};
 use syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
 use syntax::parse::attr::ParserAttr;
 
-use readline;
 use repl::{lookup_command, CmdArgs};
 
 use self::InputResult::*;
@@ -111,7 +111,7 @@ impl InputReader {
     /// Returns `More` if further input is required for a complete result.
     /// In this case, the input received so far is buffered internally.
     pub fn read_input(&mut self, prompt: &str) -> InputResult {
-        let line = match readline::read_line(prompt) {
+        let line = match linenoise::input(prompt) {
             Some(s) => s,
             None => return Eof,
         };
@@ -122,7 +122,7 @@ impl InputReader {
             return Empty;
         }
 
-        readline::push_history(&line);
+        linenoise::history_add(&line);
 
         let res = if is_command(&self.buffer) {
             parse_command(&self.buffer, true)
@@ -152,13 +152,13 @@ impl InputReader {
         let mut buf = String::new();
 
         loop {
-            let line = match readline::read_line(prompt) {
+            let line = match linenoise::input(prompt) {
                 Some(s) => s,
                 None => return Eof,
             };
 
             if !line.is_empty() {
-                readline::push_history(&line);
+                linenoise::history_add(&line);
             }
 
             if line == ".q" || line == ":q" {
