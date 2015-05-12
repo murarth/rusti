@@ -15,11 +15,13 @@ use std::io::Write;
 use std::process::Command;
 
 /// Runs racer to provide code completion on the given input.
-pub fn complete(text: &str, _start: usize, _end: usize) -> Vec<String> {
+///
+/// Returns the common prefix of all completions and the list of matched completions.
+pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>) {
     // don't actually attempt to search when the input is empty (it doesn't work).
     // TODO we could use a hack to still support adding indentation this way: change the prompt
     let text = text.trim();
-    if text == "" { return vec![]; }
+    if text == "" { return (String::new(), vec![]); }
 
     // TODO: Maybe use the `tempfile` crate instead?
     let mut path = ::std::env::temp_dir();
@@ -42,12 +44,13 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> Vec<String> {
 
     if let Err(e) = result {
         warn!("error: couldn't invoke racer: {:?}", e);
-        return vec![];
+        return (String::new(), vec![]);
     }
 
     let res_string = String::from_utf8(result.unwrap().stdout).unwrap();
     let mut lines = res_string.lines();
     let mut completions = vec![];
+    let mut prefix;
 
     // read the prefix length from the first line of output. used to remove the prefix from the
     // completions.
@@ -56,23 +59,25 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> Vec<String> {
             Some(l) => l,
             None => {
                 warn!("error: unexpected racer output: {}", res_string);
-                return vec![];
+                return (String::new(), vec![]);
             },
         };
 
         let prefix_parts: Vec<_> = prefix_line.splitn(2, " ").collect();
         if prefix_parts[0] != "PREFIX" {
             warn!("error: unexpected racer output: {}", res_string);
-            return vec![];
+            return (String::new(), vec![]);
         }
 
         let args: Vec<_> = prefix_parts[1].splitn(3, ",").collect();
         if args.len() != 3 {
             warn!("error: unexpected racer output: {}", res_string);
-            return vec![];
+            return (String::new(), vec![]);
         }
 
-        let (start, end, _prefix): (usize, usize, &str) = (args[0].parse().unwrap(), args[1].parse().unwrap(), args[2]);
+        let (start, end, pre): (usize, usize, &str) = (args[0].parse().unwrap(), args[1].parse().unwrap(), args[2]);
+
+        prefix = String::from_str(pre);
 
         end - start
     };
@@ -104,5 +109,5 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> Vec<String> {
         }
     }
 
-    completions
+    (prefix, completions)
 }

@@ -12,6 +12,7 @@
 #![feature(collections, exit_status, libc, path_ext,
     rustc_private, set_stdio)]
 
+extern crate c_vec;
 extern crate getopts;
 extern crate libc;
 extern crate rustc;
