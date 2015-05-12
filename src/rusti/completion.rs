@@ -14,14 +14,8 @@ use std::fs::{OpenOptions, remove_file};
 use std::io::Write;
 use std::process::Command;
 
-use linenoise;
-
-/// Sets up the completion callback with linenoise
-pub fn init() {
-    linenoise::set_callback(complete);
-}
-
-fn complete(text: &str) -> Vec<String> {
+/// Runs racer to provide code completion on the given input.
+pub fn complete(text: &str, _start: usize, _end: usize) -> Vec<String> {
     // don't actually attempt to search when the input is empty (it doesn't work).
     // TODO we could use a hack to still support adding indentation this way: change the prompt
     let text = text.trim();

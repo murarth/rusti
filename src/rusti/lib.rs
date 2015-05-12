@@ -19,7 +19,6 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_resolve;
 extern crate syntax;
-extern crate linenoise;
 
 #[macro_use] extern crate log;
 extern crate env_logger;
@@ -32,12 +31,12 @@ use std::path::PathBuf;
 pub mod completion;
 pub mod exec;
 pub mod input;
+pub mod readline;
 pub mod repl;
 
 /// Run `rusti` executable using `env::args`
 pub fn run() {
     env_logger::init().unwrap();
-    completion::init();
 
     let args = std::env::args().collect::<Vec<_>>();
     let mut opts = Options::new();

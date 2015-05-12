@@ -20,4 +20,3 @@ test = false
 env_logger = "*"
 getopts = "*"
 log = "*"
-linenoise-rust = "*"
