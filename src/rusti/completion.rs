@@ -10,37 +10,25 @@
 
 // TODO: use a Cargo feature for this?
 
-use std::fs::{OpenOptions, remove_file};
 use std::io::Write;
 use std::process::Command;
+
+use tempfile::NamedTempFile;
 
 /// Runs racer to provide code completion on the given input.
 ///
 /// Returns the common prefix of all completions and the list of matched completions.
 pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>) {
     // don't actually attempt to search when the input is empty (it doesn't work).
-    // TODO we could use a hack to still support adding indentation this way: change the prompt
     let text = text.trim();
     if text == "" { return (String::new(), vec![]); }
 
-    // TODO: Maybe use the `tempfile` crate instead?
-    let mut path = ::std::env::temp_dir();
-    path.push("rusti-complete");    // TODO assign unique (random) name (again, `tempfile`?)
-
-    let mut file = OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(&path).unwrap();
-
+    let mut file = NamedTempFile::new().unwrap();
     file.write_all(text.as_bytes()).unwrap();
     file.write_fmt(format_args!("\n")).unwrap();
-    drop(file);
 
     let result = Command::new("racer").arg("complete").arg("1")
-        .arg(format!("{}", text.len())).arg(path.to_str().unwrap()).output();
-
-    remove_file(&path).unwrap();
+        .arg(format!("{}", text.len())).arg(file.path().to_str().unwrap()).output();
 
     if let Err(e) = result {
         warn!("error: couldn't invoke racer: {:?}", e);

@@ -20,6 +20,7 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_resolve;
 extern crate syntax;
+extern crate tempfile;
 
 #[macro_use] extern crate log;
 extern crate env_logger;
