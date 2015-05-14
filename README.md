@@ -67,6 +67,13 @@ program can define functions, no functions will be called automatically.
 Instead, all statements not within a function body will be executed sequentially,
 just like interactive mode.
 
+### Code completion
+
+`rusti` provides optional support for code completion using
+[Racer](https://github.com/phildawes/racer). 
+
+To enable code completion, build Racer and install into your `PATH`.
+
 ## Commands
 
 These are special inputs interpreted by `rusti` that are not directly
@@ -120,7 +127,7 @@ rusti=> .t (1i32, 2u32)
 (1i32, 2u32) = (i32, u32)
 rusti=> fn foo() -> i32 { 1 }
 rusti=> .t foo
-foo = fn() -> i32
+foo = fn() -> i32 {foo}
 rusti=> .t foo()
 foo() = i32
 ```
