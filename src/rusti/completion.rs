@@ -87,7 +87,7 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>)
                     name.remove(0);
                 }
 
-                let completion = text.to_string() + name.as_ref();
+                let completion = String::from_str(name.as_ref());
                 debug!("completion: {}", completion);
                 completions.push(completion);
             }

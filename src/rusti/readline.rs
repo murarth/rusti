@@ -117,11 +117,13 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         {
             let s = vec.as_mut();
 
+            let prefix = String::from_str(::std::str::from_utf8(text.to_bytes()).unwrap()) + &prefix;
             s[0] = c_str(prefix.as_ref());
 
             let mut i = 1;
             for c in completions {
-                s[i] = c_str(&*c);
+                let completion = String::from_str(::std::str::from_utf8(text.to_bytes()).unwrap()) + &c;
+                s[i] = c_str(&completion);
                 i += 1;
             }
 
