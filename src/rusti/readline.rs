@@ -35,6 +35,8 @@ type RlCompletionFn = extern "C" fn(*const c_char, c_int, c_int) -> *mut *const 
 extern "C" {
     static mut rl_attempted_completion_function: RlCompletionFn;
     static mut rl_attempted_completion_over: c_int;
+    static mut rl_line_buffer: *mut c_char;
+    static mut rl_completion_suppress_append: c_int;
 
     #[link_name = "add_history"]
     fn rl_add_history(line: *const c_char);
@@ -76,20 +78,24 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         // Prevent readline from calling its default completion function
         // if this function returns NULL.
         rl_attempted_completion_over = 1;
+
+        // Do not append a space if a single match was inserted
+        rl_completion_suppress_append = 1;
     }
 
+    let input = unsafe { CStr::from_ptr(rl_line_buffer) };
     let text = unsafe { CStr::from_ptr(text) };
 
-    debug!("completion fn on \"{:?}\"", from_utf8(text.to_bytes()).ok());
+    debug!("completion fn on \"{:?}\", {} - {}", from_utf8(text.to_bytes()).ok(), start, end);
 
     // Tab with no text inserts indentation
-    if text.to_bytes().is_empty() {
+    if input.to_bytes().is_empty() {
         let sp = CString::new(&b"    "[..]).unwrap();
         unsafe { rl_insert_text(sp.as_ptr()) };
     }
 
-    let (_, completions) = completion::complete(
-        ::std::str::from_utf8(text.to_bytes()).unwrap(), start as usize, end as usize);
+    let input = ::std::str::from_utf8(input.to_bytes()).unwrap();
+    let (prefix, completions) = completion::complete(input, start as usize, end as usize);
 
     unsafe {
         let size = mem::size_of::<*const c_char>();
@@ -97,9 +103,8 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         let buf = libc::calloc(n as size_t, size as size_t) as *mut *const c_char;
         let mut vec: CSlice<*const c_char> = CSlice::new(buf, n);
 
-        debug!("n = {}", n);
-
-        /// Allocates space for the given string and copies it into it, appending a leading zero.
+        /// Allocates space for the given string and copies it into it. Also appends a terminating
+        /// zero.
         unsafe fn c_str(s: &str) -> *const c_char {
             let len = s.as_bytes().len();
             let dest = libc::malloc((len + 1) as size_t) as *mut c_char;
@@ -112,12 +117,7 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         {
             let s = vec.as_mut();
 
-            if completions.len() == 1 {
-                s[0] = c_str(completions[0].as_ref());
-            } else {
-                // TODO use the common prefix here
-                s[0] = c_str("");
-            }
+            s[0] = c_str(prefix.as_ref());
 
             let mut i = 1;
             for c in completions {

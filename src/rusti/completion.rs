@@ -38,7 +38,6 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>)
     let res_string = String::from_utf8(result.unwrap().stdout).unwrap();
     let mut lines = res_string.lines();
     let mut completions = vec![];
-    let mut prefix;
 
     // read the prefix length from the first line of output. used to remove the prefix from the
     // completions.
@@ -63,9 +62,7 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>)
             return (String::new(), vec![]);
         }
 
-        let (start, end, pre): (usize, usize, &str) = (args[0].parse().unwrap(), args[1].parse().unwrap(), args[2]);
-
-        prefix = String::from_str(pre);
+        let (start, end, _pre): (usize, usize, &str) = (args[0].parse().unwrap(), args[1].parse().unwrap(), args[2]);
 
         end - start
     };
@@ -91,11 +88,29 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>)
                 }
 
                 let completion = text.to_string() + name.as_ref();
+                debug!("completion: {}", completion);
                 completions.push(completion);
             }
             _ => warn!("unexpected racer output: {}", line)
         }
     }
 
-    (prefix, completions)
+    // find the longest common prefix of all completions
+    if completions.len() > 0 {
+        let mut prefix: String = completions[0].clone();
+
+        for c in completions[1..].iter() {
+            while !c.starts_with(&prefix) {
+                prefix.pop();
+            }
+
+            if prefix == "" { break; }
+        }
+
+        debug!("prefix: {}", prefix);
+
+        (prefix, completions)
+    } else {
+        ("".to_string(), completions)
+    }
 }
