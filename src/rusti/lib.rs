@@ -12,6 +12,7 @@
 #![feature(collections, exit_status, libc, path_ext,
     rustc_private, set_stdio)]
 
+extern crate c_vec;
 extern crate getopts;
 extern crate libc;
 extern crate rustc;
@@ -19,6 +20,7 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_resolve;
 extern crate syntax;
+extern crate tempfile;
 
 #[macro_use] extern crate log;
 extern crate env_logger;
@@ -28,6 +30,7 @@ use getopts::Options;
 use std::fs::PathExt;
 use std::path::PathBuf;
 
+pub mod completion;
 pub mod exec;
 pub mod input;
 pub mod readline;
