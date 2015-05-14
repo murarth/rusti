@@ -20,5 +20,4 @@ test = false
 env_logger = "*"
 getopts = "*"
 log = "*"
-c_vec = "*"
 tempfile = "*"

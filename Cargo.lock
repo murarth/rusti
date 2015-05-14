@@ -2,17 +2,11 @@
 name = "rusti"
 version = "0.0.1"
 dependencies = [
- "c_vec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "c_vec"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "env_logger"

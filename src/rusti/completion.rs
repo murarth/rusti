@@ -18,85 +18,98 @@ use tempfile::NamedTempFile;
 /// Runs racer to provide code completion on the given input.
 ///
 /// Returns the common prefix of all completions and the list of matched completions.
-pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>) {
+pub fn complete(text: &str, _start: usize, end: usize)
+        -> Option<(String, Vec<String>)> {
     // don't actually attempt to search when the input is empty (it doesn't work).
     let text = text.trim();
-    if text == "" { return (String::new(), vec![]); }
+    if text.is_empty() {
+        return None;
+    }
+
+    debug!("completion input: {:?}", text);
 
     let mut file = NamedTempFile::new().unwrap();
     file.write_all(text.as_bytes()).unwrap();
-    file.write_fmt(format_args!("\n")).unwrap();
+    file.write_all(b"\n").unwrap();
 
     let result = Command::new("racer").arg("complete").arg("1")
-        .arg(format!("{}", text.len())).arg(file.path().to_str().unwrap()).output();
+        .arg(format!("{}", end)).arg(file.path()).output();
 
     if let Err(e) = result {
         warn!("error: couldn't invoke racer: {:?}", e);
-        return (String::new(), vec![]);
+        return None;
     }
 
     let res_string = String::from_utf8(result.unwrap().stdout).unwrap();
     let mut lines = res_string.lines();
     let mut completions = vec![];
 
-    // read the prefix length from the first line of output. used to remove the prefix from the
-    // completions.
-    let prefixlen = {
+    // read the prefix length from the first line of output.
+    // used to remove the prefix from the completions.
+    let prefix_len = {
         let prefix_line = match lines.next() {
             Some(l) => l,
             None => {
-                warn!("error: unexpected racer output: {}", res_string);
-                return (String::new(), vec![]);
+                warn!("unexpected racer output: {:?}", res_string);
+                return None;
             },
         };
 
-        let prefix_parts: Vec<_> = prefix_line.splitn(2, " ").collect();
-        if prefix_parts[0] != "PREFIX" {
-            warn!("error: unexpected racer output: {}", res_string);
-            return (String::new(), vec![]);
+        let prefix_parts: Vec<_> = prefix_line.splitn(2, ' ').collect();
+        if prefix_parts.len() != 2 || prefix_parts[0] != "PREFIX" {
+            warn!("invalid PREFIX line: {:?}", res_string);
+            return None;
         }
 
-        let args: Vec<_> = prefix_parts[1].splitn(3, ",").collect();
+        let args: Vec<_> = prefix_parts[1].splitn(3, ',').collect();
         if args.len() != 3 {
-            warn!("error: unexpected racer output: {}", res_string);
-            return (String::new(), vec![]);
+            warn!("invalid PREFIX value: {:?}", prefix_line);
+            return None;
         }
 
-        let (start, end, _pre): (usize, usize, &str) = (args[0].parse().unwrap(), args[1].parse().unwrap(), args[2]);
+        let (start, end) = match (args[0].parse::<usize>(), args[1].parse::<usize>()) {
+            (Ok(start), Ok(end)) if start <= end => (start, end),
+            _ => {
+                warn!("invalid PREFIX values: {:?}", prefix_line);
+                return None;
+            }
+        };
 
         end - start
     };
 
     for line in lines {
         let (restype, rest) = {
-            let vec: Vec<_> = line.splitn(2, " ").collect();
+            let vec: Vec<_> = line.splitn(2, ' ').collect();
+            if vec.len() != 2 {
+                warn!("unexpected racer output: {:?}", line);
+                return None;
+            }
             (vec[0], vec[1])
         };
 
         match restype {
             "MATCH" => {
-                let (name, _decl_line, _decl_col, _file, _kind, _decl) = {
-                    let vec: Vec<_> = rest.split(",").collect();
-                    (vec[0], vec[1], vec[2], vec[3], vec[4], vec[5])
+                let name = match rest.split(',').next() {
+                    // Remove item's prefix
+                    Some(name) => &name[prefix_len..],
+                    None => {
+                        warn!("invalid MATCH value: {:?}", rest);
+                        return None;
+                    }
                 };
 
-                // remove item's prefix and append to input. yes, this means completion only works
-                // at the end of the input.
-                let mut name = name.to_string();
-                for _ in 0..prefixlen {
-                    name.remove(0);
-                }
-
-                let completion = String::from_str(name.as_ref());
-                debug!("completion: {}", completion);
-                completions.push(completion);
+                debug!("completion: {:?}", name);
+                completions.push(name.to_string());
             }
-            _ => warn!("unexpected racer output: {}", line)
+            _ => warn!("unexpected racer output: {:?}", line)
         }
     }
 
-    // find the longest common prefix of all completions
-    if completions.len() > 0 {
+    if completions.is_empty() {
+        None
+    } else {
+        // find the longest common prefix of all completions
         let mut prefix: String = completions[0].clone();
 
         for c in completions[1..].iter() {
@@ -104,13 +117,13 @@ pub fn complete(text: &str, _start: usize, _end: usize) -> (String, Vec<String>)
                 prefix.pop();
             }
 
-            if prefix == "" { break; }
+            if prefix.is_empty() {
+                break;
+            }
         }
 
-        debug!("prefix: {}", prefix);
+        debug!("prefix: {:?}", prefix);
 
-        (prefix, completions)
-    } else {
-        ("".to_string(), completions)
+        Some((prefix, completions))
     }
 }
