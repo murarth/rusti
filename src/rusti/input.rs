@@ -25,11 +25,11 @@ use syntax::ast::MacStmtStyle::*;
 use syntax::ast::Stmt_::*;
 use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::diagnostic::{Auto, Emitter, EmitterWriter};
-use syntax::diagnostic::{Level, RenderSpan, mk_handler};
+use syntax::diagnostic::{Handler, Level, RenderSpan};
 use syntax::diagnostic::Level::*;
 use syntax::diagnostics::registry::Registry;
 use syntax::parse::{classify, token, PResult};
-use syntax::parse::{new_parse_sess, string_to_filemap, filemap_to_parser};
+use syntax::parse::{filemap_to_parser, ParseSess};
 use syntax::parse::attr::ParserAttr;
 
 use readline;
@@ -291,13 +291,14 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             io::set_panic(Box::new(io::sink()));
         }
         let mut input = Input::new();
-        let handler = mk_handler(false, Box::new(ErrorEmitter::new(err_tx, filter)));
-        let mut sess = new_parse_sess();
+        let handler = Handler::with_emitter(false,
+            Box::new(ErrorEmitter::new(err_tx, filter)));
+        let mut sess = ParseSess::new();
 
         sess.span_diagnostic.handler = handler;
 
         let mut p = filemap_to_parser(&sess,
-            string_to_filemap(&sess, code.to_string(), filename),
+            sess.codemap().new_filemap(filename, code.to_string()),
             Vec::new());
 
         // Whether the last statement is an expression without a semicolon
