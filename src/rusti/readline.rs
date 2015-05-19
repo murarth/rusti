@@ -35,7 +35,6 @@ extern "C" {
     static mut rl_attempted_completion_function: RlCompletionFn;
     static mut rl_attempted_completion_over: c_int;
     static mut rl_line_buffer: *mut c_char;
-    static mut rl_completion_suppress_append: c_int;
 
     static mut rl_basic_word_break_characters: *const c_char;
 
@@ -85,9 +84,6 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         // Prevent readline from calling its default completion function
         // if this function returns NULL.
         rl_attempted_completion_over = 1;
-
-        // Do not append a space if a single match was inserted
-        rl_completion_suppress_append = 1;
     }
 
     let input = unsafe { CStr::from_ptr(rl_line_buffer) };
