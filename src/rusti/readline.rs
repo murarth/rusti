@@ -34,6 +34,7 @@ type RlCompletionFn = extern "C" fn(*const c_char, c_int, c_int) -> *mut *const 
 extern "C" {
     static mut rl_attempted_completion_function: RlCompletionFn;
     static mut rl_attempted_completion_over: c_int;
+    static mut rl_completion_append_character: c_int;
     static mut rl_line_buffer: *mut c_char;
 
     static mut rl_basic_word_break_characters: *const c_char;
@@ -84,6 +85,9 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         // Prevent readline from calling its default completion function
         // if this function returns NULL.
         rl_attempted_completion_over = 1;
+
+        // Add no space after completed names.
+        rl_completion_append_character = 0;
     }
 
     let input = unsafe { CStr::from_ptr(rl_line_buffer) };
