@@ -1,5 +1,5 @@
 Contributors to the Rusti Project include:
 
 Abhishek Chanda <abhishek.becs@gmail.com>
-jonas-schievink <jonas@schievink.net>
+Jonas Schievink <jonas@schievink.net>
 Murarth <murarth@gmail.com>
