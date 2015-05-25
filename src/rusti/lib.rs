@@ -109,13 +109,8 @@ pub fn run() {
 }
 
 /// Returns a version string.
-pub fn version() -> String {
-    // Is this really the best way to do this?
-    format!("{}.{}.{}{}",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        env!("CARGO_PKG_VERSION_MINOR"),
-        env!("CARGO_PKG_VERSION_PATCH"),
-        option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""))
+pub fn version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
 }
 
 fn print_usage(arg0: &str, opts: &Options) {
