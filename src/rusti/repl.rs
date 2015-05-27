@@ -433,7 +433,7 @@ struct ExprType<'a, 'tcx: 'a> {
 impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
     fn visit_fn(&mut self, fk: visit::FnKind<'v>, _fd: &'v ast::FnDecl,
             b: &'v ast::Block, _s: codemap::Span, _n: ast::NodeId) {
-        if let visit::FkItemFn(ident, _, _, _, _) = fk {
+        if let visit::FkItemFn(ident, _, _, _, _, _) = fk {
             if &*token::get_ident(ident) == self.fn_name {
                 if let Some(ref stmt) = b.stmts.last() {
                     if let StmtSemi(ref expr, _) = stmt.node {
