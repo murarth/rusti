@@ -69,10 +69,9 @@ just like interactive mode.
 
 ### Code completion
 
-`rusti` provides optional support for code completion using
-[Racer](https://github.com/phildawes/racer). 
+`rusti` provides optional support for code completion using [Racer](https://github.com/phildawes/racer).
 
-To enable code completion, build Racer and install into your `PATH`.
+To enable code completion, build Racer and install into your `PATH`. You also need to set `RUST_SRC_PATH` to the `src` directory of your local rust checkout so that racer can find the source files.
 
 ## Commands
 
