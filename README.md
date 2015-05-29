@@ -69,10 +69,9 @@ just like interactive mode.
 
 ### Code completion
 
-`rusti` provides optional support for code completion using
-[Racer](https://github.com/phildawes/racer). 
+`rusti` provides optional support for code completion using [Racer](https://github.com/phildawes/racer).
 
-To enable code completion, build Racer and install into your `PATH`.
+To enable code completion, install Racer as outlined in the [Installation Instructions](https://github.com/phildawes/racer#installation) and place the `racer` executable into your `PATH`.
 
 ## Commands
 
