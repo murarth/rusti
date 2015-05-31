@@ -6,7 +6,12 @@ Rusti is a work in progress.
 
 ## Building
 
-Rusti builds with the latest Rust nightly, using the Cargo build system.
+Rusti builds with the latest Rust nightly, using the Cargo build system.  
+Currently, it **must** be built using a nightly release of the Rust compiler.
+Nightly releases can be found at the bottom of the
+[Rust install page](http://www.rust-lang.org/install.html)
+or installed using the `--channel=nightly` option to
+[rustup](https://github.com/rust-lang/rustup).
 
 Rusti requires GNU Readline.
 
