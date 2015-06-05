@@ -287,7 +287,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let filename = filename.unwrap_or("<input>").to_string();
 
     let handle = task.spawn(move || {
-        if !log_enabled!(::log::LogLevel::Error) {
+        if !log_enabled!(::log::LogLevel::Debug) {
             io::set_panic(Box::new(io::sink()));
         }
         let mut input = Input::new();

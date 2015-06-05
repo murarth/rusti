@@ -303,7 +303,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
     let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
-        if !log_enabled!(::log::LogLevel::Error) {
+        if !log_enabled!(::log::LogLevel::Debug) {
             io::set_panic(Box::new(io::sink()));
         }
         let opts = build_exec_options(sysroot, libs);
@@ -361,7 +361,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
     let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
-        if !log_enabled!(::log::LogLevel::Error) {
+        if !log_enabled!(::log::LogLevel::Debug) {
             io::set_panic(Box::new(io::sink()));
         }
         let opts = build_exec_options(sysroot, libs);
