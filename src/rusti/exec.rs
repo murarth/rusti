@@ -19,6 +19,7 @@ use std::thread::Builder;
 use rustc;
 use rustc_lint;
 
+use rustc::ast_map;
 use rustc::llvm;
 use rustc::metadata::cstore::RequireDynamic;
 use rustc::middle::ty;
@@ -28,7 +29,6 @@ use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_resolve::MakeGlobMap;
 
-use syntax::ast_map;
 use syntax::diagnostics::registry::Registry;
 
 
