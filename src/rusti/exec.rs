@@ -10,7 +10,6 @@
 
 use std::ffi::{CStr, CString};
 use std::io;
-use std::mem::transmute;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::from_utf8;
@@ -32,15 +31,6 @@ use rustc_resolve::MakeGlobMap;
 use syntax::ast_map;
 use syntax::diagnostics::registry::Registry;
 
-// This seems like a such a simple solution that I'm surprised it works.
-#[link(name = "morestack")]
-extern "C" {
-    fn __morestack();
-}
-
-fn morestack_addr() -> *const () {
-    unsafe { transmute(__morestack) }
-}
 
 /// Compiles input code into an execution environment.
 pub struct ExecutionEngine {
@@ -92,15 +82,7 @@ impl ExecutionEngine {
             sysroot.clone(), libs.clone())
             .expect("ExecutionEngine init input failed to compile");
 
-        let morestack = morestack_addr();
-
-        assert!(!morestack.is_null());
-
-        let mm = unsafe { llvm::LLVMRustCreateJITMemoryManager(morestack) };
-
-        assert!(!mm.is_null());
-
-        let ee = unsafe { llvm::LLVMBuildExecutionEngine(llmod, mm) };
+        let ee = unsafe { llvm::LLVMBuildExecutionEngine(llmod) };
 
         if ee.is_null() {
             panic!("Failed to create ExecutionEngine: {}", llvm_error());
