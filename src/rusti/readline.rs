@@ -98,18 +98,19 @@ extern "C" fn completion_fn(text: *const c_char, start: c_int, end: c_int) -> *m
         String::from_utf8_lossy(text.to_bytes()),
         start, end);
 
+    let input_bytes = input.to_bytes();
+
     // Tab with no text inserts indentation
-    if input.to_bytes().iter().all(|&b| (b as char).is_whitespace()) {
-        let sp = CString::new(&b"    "[..]).unwrap();
-        unsafe { rl_insert_text(sp.as_ptr()) };
+    if input_bytes.iter().all(|&b| (b as char).is_whitespace()) {
+        let indent = b"    \0";
+        unsafe { rl_insert_text(
+            indent[input_bytes.len() % 4..].as_ptr() as *const _) };
     }
 
-    assert!(start >= 0 && end >= 0);
-    let start = start as usize;
     let end = end as usize;
 
     let input = from_utf8(input.to_bytes()).unwrap();
-    let (prefix, completions) = match complete(input, start, end) {
+    let (prefix, completions) = match complete(input, end) {
         Some(r) => r,
         None => return ptr::null_mut()
     };

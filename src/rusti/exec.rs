@@ -31,7 +31,6 @@ use rustc_resolve::MakeGlobMap;
 
 use syntax::diagnostics::registry::Registry;
 
-
 /// Compiles input code into an execution environment.
 pub struct ExecutionEngine {
     ee: llvm::ExecutionEngineRef,

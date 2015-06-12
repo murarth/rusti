@@ -6,27 +6,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Provides racer-based completion
-
-// TODO: use a Cargo feature for this?
+//! Provides name completion for user input.
 
 use std::io::Write;
 use std::process::Command;
 
 use tempfile::NamedTempFile;
 
-/// Runs racer to provide code completion on the given input.
+/// Returns a series of possible completions for the given input.
+/// Input text may be a word or the entire line buffer.
+/// `end` indicates the position of the cursor.
+/// This typically one past the end of the word, in bytes.
 ///
-/// Returns the common prefix of all completions and the list of matched completions.
-pub fn complete(text: &str, _start: usize, end: usize)
-        -> Option<(String, Vec<String>)> {
-    // don't actually attempt to search when the input is empty (it doesn't work).
-    let text = text.trim();
-    if text.is_empty() {
+/// Results are returned as the (possibly empty) common prefix of all matches
+/// and the series of suffixes to the existing portion of the word.
+///
+/// If no matches are found, returns `None`.
+pub fn complete(text: &str, end: usize) -> Option<(String, Vec<String>)> {
+    debug!("completion input: text={:?} end={:?}", text, end);
+
+    // Don't attempt to search when the input is empty
+    if text.chars().all(|c| c.is_whitespace()) {
         return None;
     }
-
-    debug!("completion input: {:?}", text);
 
     let mut file = NamedTempFile::new().unwrap();
     file.write_all(text.as_bytes()).unwrap();
@@ -90,17 +92,34 @@ pub fn complete(text: &str, _start: usize, end: usize)
 
         match restype {
             "MATCH" => {
-                let name = match rest.split(',').next() {
+                debug!("MATCH line: {:?}", rest);
+                let mut fields = rest.split(',');
+
+                let mut name = match fields.next() {
                     // Remove item's prefix
-                    Some(name) => &name[prefix_len..],
+                    Some(name) => name[prefix_len..].to_string(),
                     None => {
-                        warn!("invalid MATCH value: {:?}", rest);
+                        warn!("missing name in MATCH value: {:?}", rest);
                         return None;
                     }
                 };
 
+                let mtype = match fields.nth(3) {
+                    Some(ty) => ty,
+                    None => {
+                        warn!("missing type in MATCH value: {:?}", rest);
+                        return None;
+                    }
+                };
+
+                match mtype {
+                    "Crate" | "Module" => name.push_str("::"),
+                    "Function" => name.push('('),
+                    _ => ()
+                }
+
                 debug!("completion: {:?}", name);
-                completions.push(name.to_string());
+                completions.push(name);
             }
             _ => warn!("unexpected racer output: {:?}", line)
         }
