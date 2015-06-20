@@ -13,7 +13,6 @@ use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::from_utf8;
-use std::sync::mpsc::channel;
 use std::thread::Builder;
 
 use rustc;
@@ -144,10 +143,11 @@ impl ExecutionEngine {
     }
 
     /// Compiles the given input only up to the analysis phase, calling the
-    /// given closure with a borrowed reference to the analysis result.
+    /// given closure with a borrowed reference to the type context and
+    /// the produced analysis.
     pub fn with_analysis<F, R, T>(&self, input: T, f: F) -> Option<R>
             where F: Send + 'static, R: Send + 'static, T: IntoInput,
-            F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
+            F: for<'tcx> FnOnce(&ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
         with_analysis(f, input.into_input(),
             self.sysroot.clone(), self.lib_paths.clone())
     }
@@ -281,8 +281,6 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     let task = Builder::new().name("compile_input".to_string());
 
-    let (tx, rx) = channel();
-
     let handle = task.spawn(move || {
         if !log_enabled!(::log::LogLevel::Debug) {
             io::set_panic(Box::new(io::sink()));
@@ -304,42 +302,36 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-        let analysis = driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No);
+        driver::phase_3_run_analysis_passes(
+            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis | {
+                let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 
-        let (tcx, trans) = driver::phase_4_translate_to_llvm(analysis);
+                let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
 
-        let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
+                // Collect crates used in the session.
+                // Reverse order finds dependencies first.
+                let deps = crates.into_iter().rev()
+                    .filter_map(|(_, p)| p).collect();
 
-        // Collect crates used in the session.
-        // Reverse order finds dependencies first.
-        let deps = crates.into_iter().rev()
-            .filter_map(|(_, p)| p).collect();
+                assert_eq!(trans.modules.len(), 1);
+                let llmod = trans.modules[0].llmod;
 
-        assert_eq!(trans.modules.len(), 1);
-        let llmod = trans.modules[0].llmod;
+                // Workaround because raw pointers do not impl Send
+                let modp = llmod as usize;
 
-        // Workaround because raw pointers do not impl Send
-        let modp = llmod as usize;
-
-        tx.send((modp, deps)).unwrap();
+                (modp, deps)
+            }).1
     }).unwrap();
 
-    if let Err(_) = handle.join() {
-        return None;
-    }
-
-    let (llmod, deps) = rx.recv().unwrap();
-    Some((llmod as llvm::ModuleRef, deps))
+    handle.join().ok().map(|(llmod, deps)| (llmod as llvm::ModuleRef, deps))
 }
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
-/// the given closure with the resulting `CrateAnalysis`.
+/// the given closure with the borrowed type context and resulting `CrateAnalysis`.
 fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
-        F: for<'tcx> FnOnce(&ty::CrateAnalysis<'tcx>) -> R {
+        F: for<'tcx> FnOnce(&ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
     let task = Builder::new().name("with_analysis".to_string());
-    let (tx, rx) = channel();
 
     let handle = task.spawn(move || {
         if !log_enabled!(::log::LogLevel::Debug) {
@@ -362,12 +354,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-        let analysis = driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No);
-
-        tx.send(f(&analysis)).unwrap();
+        driver::phase_3_run_analysis_passes(
+            sess, ast_map, &arenas, id, MakeGlobMap::No, f).1
     }).unwrap();
 
-    let _ = handle.join();
-    rx.recv().ok()
+    handle.join().ok()
 }

@@ -9,5 +9,6 @@
 extern crate rusti;
 
 fn main() {
-	rusti::run();
+    let status = rusti::run();
+    std::process::exit(status);
 }

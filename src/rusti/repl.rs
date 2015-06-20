@@ -14,7 +14,6 @@ use std::mem::transmute;
 use std::path::{Path, PathBuf};
 
 use rustc::middle::ty;
-use rustc::util::ppaux::Repr;
 
 use syntax::{ast, codemap, visit};
 use syntax::ast::Stmt_::StmtSemi;
@@ -257,7 +256,7 @@ impl Repl {
 
         format!(
 r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
-#![feature(std_misc)]
+#![feature(catch_panic, std_misc)]
 {attrs}
 {vitems}
 {items}
@@ -318,7 +317,7 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
 r#"
 #[no_mangle]
 pub fn {name}() {{
-    let _ = unsafe {{ std::rt::unwind::try(_rusti_inner) }};
+    let _ = std::thread::catch_panic(_rusti_inner);
 }}
 
 fn _rusti_inner() {{
@@ -388,14 +387,14 @@ fn _rusti_inner() {{
     fn expr_type(&self, fn_name: &str, prog: String) -> Option<String> {
         let fn_name = fn_name.to_string();
 
-        self.engine.with_analysis(prog, move |analysis| {
+        self.engine.with_analysis(prog, move |tcx, _analysis| {
             let mut v = ExprType{
                 fn_name: fn_name,
                 result: None,
-                ty_cx: &analysis.ty_cx,
+                ty_cx: tcx,
             };
 
-            visit::walk_crate(&mut v, analysis.ty_cx.map.krate());
+            visit::walk_crate(&mut v, tcx.map.krate());
 
             if let Some(ty) = v.result {
                 ty
@@ -439,7 +438,7 @@ impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
                     if let StmtSemi(ref expr, _) = stmt.node {
                         let id = expr.id;
                         if let Some(ty) = self.ty_cx.node_types().get(&id) {
-                            self.result = Some(ty.repr(self.ty_cx));
+                            self.result = Some(format!("{:?}", ty));
                         }
                     }
                 }

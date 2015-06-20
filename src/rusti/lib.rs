@@ -9,8 +9,7 @@
 //! A REPL for the Rust programming language.
 
 #![crate_name = "rusti"]
-#![feature(collections, exit_status, libc, path_ext,
-    rustc_private, set_stdio)]
+#![feature(path_ext, rustc_private, set_stdio, slice_extras)]
 
 extern crate getopts;
 extern crate libc;
@@ -35,8 +34,9 @@ pub mod input;
 pub mod readline;
 pub mod repl;
 
-/// Run `rusti` executable using `env::args`
-pub fn run() {
+/// Run `rusti` executable using `env::args`.
+/// Returns desired process exit status.
+pub fn run() -> i32 {
     env_logger::init().unwrap();
 
     let args = std::env::args().collect::<Vec<_>>();
@@ -55,18 +55,17 @@ pub fn run() {
         Ok(m) => m,
         Err(e) => {
             println!("{}: {}", args[0], e);
-            std::env::set_exit_status(1);
-            return;
+            return 1;
         }
     };
 
     if matches.opt_present("version") {
         print_version();
-        return;
+        return 0;
     }
     if matches.opt_present("help") {
         print_usage(&args[0], &opts);
-        return;
+        return 0;
     }
 
     let interactive = matches.opt_present("interactive") ||
@@ -84,8 +83,7 @@ pub fn run() {
             let rc = p.join(".rustirc.rs");
             if rc.is_file() {
                 if !repl.run_file(&rc) {
-                    std::env::set_exit_status(1);
-                    return;
+                    return 1;
                 }
             }
         }
@@ -99,13 +97,15 @@ pub fn run() {
         let path = PathBuf::from(&matches.free[0]);
 
         if !repl.run_file(&path) {
-            std::env::set_exit_status(1);
+            return 1;
         }
     }
 
     if interactive {
         repl.run();
     }
+
+    0
 }
 
 /// Returns a version string.

@@ -19,5 +19,6 @@ test = false
 [dependencies]
 env_logger = "*"
 getopts = "*"
+libc = "*"
 log = "*"
 tempfile = "*"
