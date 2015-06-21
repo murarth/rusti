@@ -23,12 +23,13 @@ use rustc::llvm;
 use rustc::metadata::cstore::RequireDynamic;
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Options};
-use rustc::session::config::{Input, UnstableFeatures};
+use rustc::session::config::Input;
 use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_resolve::MakeGlobMap;
 
 use syntax::diagnostics::registry::Registry;
+use syntax::feature_gate::UnstableFeatures;
 
 /// Compiles input code into an execution environment.
 pub struct ExecutionEngine {
@@ -268,7 +269,7 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     opts.crate_types = vec![config::CrateTypeDylib];
 
     // Allow use of unstable features
-    opts.unstable_features = UnstableFeatures::Default;
+    opts.unstable_features = UnstableFeatures::Allow;
 
     opts
 }
