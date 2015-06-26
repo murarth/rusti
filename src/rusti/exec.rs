@@ -8,11 +8,13 @@
 
 //! Rust code parsing and compilation.
 
+use std::any::Any;
 use std::ffi::{CStr, CString};
-use std::io;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::from_utf8;
+use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
 use rustc;
@@ -28,6 +30,7 @@ use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_resolve::MakeGlobMap;
 
+use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -274,6 +277,16 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     opts
 }
 
+struct SyncBuf(Arc<Mutex<Vec<u8>>>);
+
+impl Write for SyncBuf {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.lock().unwrap().write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
 /// Compiles input up to phase 4, translation to LLVM.
 ///
 /// Returns the LLVM `ModuleRef` and a series of paths to dynamic libraries
@@ -281,10 +294,12 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
 fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     let task = Builder::new().name("compile_input".to_string());
+    let data = Arc::new(Mutex::new(Vec::new()));
+    let sink = SyncBuf(data.clone());
 
     let handle = task.spawn(move || {
         if !log_enabled!(::log::LogLevel::Debug) {
-            io::set_panic(Box::new(io::sink()));
+            io::set_panic(Box::new(sink));
         }
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
@@ -324,7 +339,13 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             }).1
     }).unwrap();
 
-    handle.join().ok().map(|(llmod, deps)| (llmod as llvm::ModuleRef, deps))
+    match handle.join() {
+        Ok((llmod, deps)) => Some((llmod as llvm::ModuleRef, deps)),
+        Err(e) => {
+            handle_compiler_panic(e, data);
+            None
+        }
+    }
 }
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
@@ -333,10 +354,12 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         where F: Send + 'static, R: Send + 'static,
         F: for<'tcx> FnOnce(&ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
     let task = Builder::new().name("with_analysis".to_string());
+    let data = Arc::new(Mutex::new(Vec::new()));
+    let sink = SyncBuf(data.clone());
 
     let handle = task.spawn(move || {
         if !log_enabled!(::log::LogLevel::Debug) {
-            io::set_panic(Box::new(io::sink()));
+            io::set_panic(Box::new(sink));
         }
         let opts = build_exec_options(sysroot, libs);
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
@@ -359,5 +382,27 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             sess, ast_map, &arenas, id, MakeGlobMap::No, f).1
     }).unwrap();
 
-    handle.join().ok()
+    match handle.join() {
+        Ok(r) => Some(r),
+        Err(e) => {
+            handle_compiler_panic(e, data);
+            None
+        }
+    }
+}
+
+fn handle_compiler_panic(e: Box<Any + Send + 'static>, data: Arc<Mutex<Vec<u8>>>) {
+    if !e.is::<diagnostic::FatalError>() {
+        if !e.is::<diagnostic::ExplicitBug>() {
+            let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+
+            emitter.emit(
+                None,
+                "unexpected panic",
+                None,
+                diagnostic::Bug);
+        }
+
+        print!("{}", from_utf8(&data.lock().unwrap()).unwrap());
+    }
 }
