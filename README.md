@@ -111,6 +111,10 @@ Entering `.q` instead will end the command without running code.
 
 The `.help` command shows usage text for any available commands.
 
+### `.load`
+
+The `.load` command evaluates the contents of a named file.
+
 ### `.print`
 
 The `.print` command will display the value of an expression, using the

@@ -20,7 +20,7 @@ use syntax::ast::Stmt_::StmtSemi;
 use syntax::parse::token;
 
 use exec::ExecutionEngine;
-use input::{parse_command, parse_program};
+use input::{parse_command, parse_program, stdin_tty};
 use input::{FileReader, Input, InputReader};
 use input::InputResult::{Command, Program, Empty, More, Eof, InputError};
 
@@ -63,6 +63,9 @@ static COMMANDS: &'static [CommandDef] = &[
     CommandDef{name: "help", args: Some("[command]"),
         accepts: CmdArgs::Text,
         help: "Show help for commands"},
+    CommandDef{name: "load", args: Some("<filename>"),
+        accepts: CmdArgs::Text,
+        help: "Evaluate a file's contents as input"},
     CommandDef{name: "print", args: Some("<expr>"),
         accepts: CmdArgs::Expr,
         help: "Print expression using fmt::Display"},
@@ -277,6 +280,13 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
             Some("help") => {
                 self.help_command(args.as_ref().map(|s| &s[..]));
             }
+            Some("load") => {
+                if let Some(name) = args {
+                    self.run_file(Path::new(&name));
+                } else {
+                    println!("command `load` expects a filename");
+                }
+            }
             Some("print") => {
                 if let Some(args) = args {
                     self.print_command(args);
@@ -446,12 +456,3 @@ impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
         }
     }
 }
-
-#[cfg(unix)]
-fn stdin_tty() -> bool {
-    use libc::{isatty, STDIN_FILENO};
-    unsafe { isatty(STDIN_FILENO) != 0 }
-}
-
-#[cfg(not(unix))]
-fn stdin_tty() -> bool { false }

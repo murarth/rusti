@@ -1,10 +1,23 @@
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
+
+fn rusti_cmd() -> Command {
+    let rusti = if cfg!(windows) {
+        "target/debug/rusti.exe"
+    } else {
+        "target/debug/rusti"
+    };
+
+    let mut cmd = Command::new(rusti);
+    cmd.env("HOME", "data");
+    cmd
+}
 
 fn repl_run(args: &[&str]) -> String {
-    let rusti = if cfg!(windows) { "target/debug/rusti.exe" } else { "target/debug/rusti" };
-
-    match Command::new(rusti).args(args).env("HOME", "data").output() {
-        Ok(out) => String::from_utf8(out.stdout).unwrap(),
+    match rusti_cmd().args(args).output() {
+        Ok(out) => {
+            String::from_utf8(out.stdout).unwrap()
+        }
         Err(e) => panic!("failed to spawn process: {}", e)
     }
 }
@@ -21,6 +34,27 @@ fn repl_file(path: &str) -> String {
     repl_run(&["--no-rc", path])
 }
 
+fn repl_input(input: &str) -> String {
+    let mut cmd = match rusti_cmd().arg("--no-rc")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn() {
+        Ok(cmd) => cmd,
+        Err(e) => panic!("failed to spawn process: {}", e)
+    };
+
+    match cmd.stdin.as_mut().expect("no process stdin")
+            .write_all(input.as_bytes()) {
+        Ok(()) => (),
+        Err(e) => panic!("failed to write child: {}", e)
+    }
+
+    match cmd.wait_with_output() {
+        Ok(out) => String::from_utf8(out.stdout).unwrap(),
+        Err(e) => panic!("failed to run command: {}", e)
+    }
+}
+
 #[test]
 fn test_eval() {
     assert_eq!(repl_eval(r#"println!("Hello, world!");"#), "Hello, world!\n");
@@ -32,7 +66,12 @@ fn test_eval() {
 
 #[test]
 fn test_file() {
-    assert_eq!(repl_file("data/test_file.rs"), "foo\n123 = i32\nbar\n");
+    assert_eq!(repl_file("data/test_run.rs"), "foo\n123 = i32\nbar\n");
+}
+
+#[test]
+fn test_load() {
+    assert_eq!(repl_input(".l data/test_load.rs\nhello(\"world\");"), "Hello, world!\n");
 }
 
 #[test]

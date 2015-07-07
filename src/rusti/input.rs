@@ -97,6 +97,7 @@ impl FileReader {
 /// Reads input from `stdin`
 pub struct InputReader {
     buffer: String,
+    is_tty: bool,
 }
 
 impl InputReader {
@@ -104,6 +105,7 @@ impl InputReader {
     pub fn new() -> InputReader {
         InputReader{
             buffer: String::new(),
+            is_tty: stdin_tty(),
         }
     }
 
@@ -111,7 +113,7 @@ impl InputReader {
     /// Returns `More` if further input is required for a complete result.
     /// In this case, the input received so far is buffered internally.
     pub fn read_input(&mut self, prompt: &str) -> InputResult {
-        let line = match readline::read_line(prompt) {
+        let line = match self.read_line(prompt) {
             Some(s) => s,
             None => return Eof,
         };
@@ -122,7 +124,7 @@ impl InputReader {
             return Empty;
         }
 
-        readline::push_history(&line);
+        self.add_history(&line);
 
         let res = if is_command(&self.buffer) {
             parse_command(&self.buffer, true)
@@ -152,13 +154,13 @@ impl InputReader {
         let mut buf = String::new();
 
         loop {
-            let line = match readline::read_line(prompt) {
+            let line = match self.read_line(prompt) {
                 Some(s) => s,
                 None => return Eof,
             };
 
             if !line.is_empty() {
-                readline::push_history(&line);
+                self.add_history(&line);
             }
 
             if line == ".q" || line == ":q" {
@@ -169,6 +171,26 @@ impl InputReader {
 
             buf.push_str(&line);
             buf.push('\n');
+        }
+    }
+
+    fn read_line(&mut self, prompt: &str) -> Option<String> {
+        if self.is_tty {
+            readline::read_line(prompt)
+        } else {
+            let mut s = String::new();
+            match io::stdin().read_line(&mut s) {
+                Ok(0) => return None,
+                Ok(_) => (),
+                Err(_) => return None
+            }
+            Some(s)
+        }
+    }
+
+    fn add_history(&self, line: &str) {
+        if self.is_tty {
+            readline::push_history(line);
         }
     }
 }
@@ -455,4 +477,9 @@ impl Emitter for ErrorEmitter {
             _msg: &str, _lvl: Level) {
         panic!("ErrorEmitter does not implement custom_emit");
     }
+}
+
+pub fn stdin_tty() -> bool {
+    use libc::{isatty, STDIN_FILENO};
+    unsafe { isatty(STDIN_FILENO) == 1 }
 }
