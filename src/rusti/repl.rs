@@ -40,6 +40,8 @@ const BLOCK_PROMPT: &'static str = "rusti+> ";
 pub enum CmdArgs {
     /// No arguments
     Nothing,
+    /// Command accepts a local filename
+    Filename,
     /// Optional unprocessed text may be accepted
     Text,
     /// A Rust expression is required
@@ -64,7 +66,7 @@ static COMMANDS: &'static [CommandDef] = &[
         accepts: CmdArgs::Text,
         help: "Show help for commands"},
     CommandDef{name: "load", args: Some("<filename>"),
-        accepts: CmdArgs::Text,
+        accepts: CmdArgs::Filename,
         help: "Evaluate a file's contents as input"},
     CommandDef{name: "print", args: Some("<expr>"),
         accepts: CmdArgs::Expr,
@@ -100,6 +102,16 @@ pub fn lookup_command(name: &str) -> Option<&'static CommandDef> {
         }
     }
     None
+}
+
+/// Calls the given closure for each command whose name begins with `prefix`.
+pub fn search_command<F>(prefix: &str, mut f: F)
+        where F: FnMut(&'static CommandDef) {
+    for cmd in COMMANDS {
+        if cmd.name.starts_with(prefix) {
+            f(cmd);
+        }
+    }
 }
 
 impl Repl {
