@@ -1,9 +1,10 @@
 language: rust
 rust: nightly
 
+sudo: false
+
 notifications:
     email: false
 
 branches:
-    only:
-        - master
+    only: master
