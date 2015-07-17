@@ -265,9 +265,9 @@ impl Repl {
             (attrs, vitems, items)
         };
 
-        let attrs = attrs.connect("\n");
-        let vitems = vitems.connect("\n");
-        let items = items.connect("\n");
+        let attrs = attrs.join("\n");
+        let vitems = vitems.join("\n");
+        let items = items.join("\n");
 
         format!(
 r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
@@ -332,7 +332,7 @@ r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
             }
         }
 
-        let stmts = input.statements.connect("\n");
+        let stmts = input.statements.join("\n");
 
         let prog = self.build_program(Some(&input),
             &format!(

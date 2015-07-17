@@ -9,7 +9,7 @@
 //! A REPL for the Rust programming language.
 
 #![crate_name = "rusti"]
-#![feature(path_ext, rustc_private, set_stdio, slice_extras)]
+#![feature(path_ext, rustc_private, set_stdio)]
 
 extern crate getopts;
 extern crate libc;
@@ -51,7 +51,7 @@ pub fn run() -> i32 {
     opts.optflag("", "no-rc", "Do not run $HOME/.rustirc.rs");
     opts.optopt("", "sysroot", "Use an alternate Rust sysroot", "PATH");
 
-    let matches = match opts.parse(args.tail()) {
+    let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(e) => {
             println!("{}: {}", args[0], e);
