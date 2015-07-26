@@ -171,7 +171,7 @@ impl ExecutionEngine {
 
                 assert!(!fp.is_null());
 
-                return Some(fp);
+                return Some(fp as *const ());
             }
         }
 
@@ -193,7 +193,7 @@ impl ExecutionEngine {
 
                 assert!(!gp.is_null());
 
-                return Some(gp);
+                return Some(gp as *const ());
             }
         }
 
