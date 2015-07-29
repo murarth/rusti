@@ -319,8 +319,10 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis | {
+            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
                 let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
+
+                tcx.sess.abort_if_errors();
 
                 let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
 
