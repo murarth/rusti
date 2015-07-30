@@ -109,7 +109,7 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
         let prefix_line = match lines.next() {
             Some(l) => l,
             None => {
-                warn!("unexpected racer output: {:?}", res_string);
+                warn!("invalid line of racer output: {:?}", res_string);
                 return None;
             },
         };
@@ -139,12 +139,10 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
 
     for line in lines {
         let (restype, rest) = {
-            let vec: Vec<_> = line.splitn(2, ' ').collect();
-            if vec.len() != 2 {
-                warn!("unexpected racer output: {:?}", line);
-                return None;
+            match line.find(' ') {
+                Some(pos) => (&line[..pos], &line[pos + 1..]),
+                None => (line, "")
             }
-            (vec[0], vec[1])
         };
 
         match restype {
@@ -178,7 +176,8 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
                 debug!("completion: {:?}", name);
                 completions.push(name);
             }
-            _ => warn!("unexpected racer output: {:?}", line)
+            "END" => break,
+            _ => warn!("unexpected racer command: {:?}", line)
         }
     }
 
