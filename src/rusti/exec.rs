@@ -262,7 +262,7 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     opts.maybe_sysroot = Some(sysroot);
 
     for p in libs.iter() {
-        opts.search_paths.add_path(&p);
+        opts.search_paths.add_path(&p, diagnostic::ColorConfig::Auto);
     }
 
     // Prefer faster build times
