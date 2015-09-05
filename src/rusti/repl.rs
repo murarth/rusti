@@ -15,8 +15,9 @@ use std::path::{Path, PathBuf};
 
 use rustc::middle::ty;
 
-use syntax::{ast, codemap, visit};
+use syntax::{ast, codemap};
 use syntax::ast::Stmt_::StmtSemi;
+use syntax::visit::{self, FnKind};
 
 use exec::ExecutionEngine;
 use input::{parse_command, parse_program, stdin_tty};
@@ -408,14 +409,14 @@ fn _rusti_inner() {{
     fn expr_type(&self, fn_name: &str, prog: String) -> Option<String> {
         let fn_name = fn_name.to_string();
 
-        self.engine.with_analysis(prog, move |tcx, _analysis| {
+        self.engine.with_analysis(prog, move |krate, tcx, _analysis| {
             let mut v = ExprType{
                 fn_name: fn_name,
                 result: None,
                 ty_cx: tcx,
             };
 
-            visit::walk_crate(&mut v, tcx.map.krate());
+            visit::walk_crate(&mut v, krate);
 
             if let Some(ty) = v.result {
                 ty
@@ -453,7 +454,7 @@ struct ExprType<'a, 'tcx: 'a> {
 impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
     fn visit_fn(&mut self, fk: visit::FnKind<'v>, _fd: &'v ast::FnDecl,
             b: &'v ast::Block, _s: codemap::Span, _n: ast::NodeId) {
-        if let visit::FkItemFn(ident, _, _, _, _, _) = fk {
+        if let FnKind::ItemFn(ident, _, _, _, _, _) = fk {
             if &*ident.name.as_str() == self.fn_name {
                 if let Some(ref stmt) = b.stmts.last() {
                     if let StmtSemi(ref expr, _) = stmt.node {

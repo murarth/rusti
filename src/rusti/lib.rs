@@ -15,6 +15,7 @@ extern crate getopts;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_resolve;
 extern crate syntax;

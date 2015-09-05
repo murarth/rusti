@@ -20,7 +20,7 @@ use std::thread::Builder;
 use rustc;
 use rustc_lint;
 
-use rustc::ast_map;
+use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::metadata::cstore::RequireDynamic;
 use rustc::middle::ty;
@@ -28,8 +28,10 @@ use rustc::session::config::{self, basic_options, build_configuration, Options};
 use rustc::session::config::Input;
 use rustc::session::build_session;
 use rustc_driver::driver;
+use rustc_front::lowering::lower_crate;
 use rustc_resolve::MakeGlobMap;
 
+use syntax::ast::Crate;
 use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
@@ -151,7 +153,7 @@ impl ExecutionEngine {
     /// the produced analysis.
     pub fn with_analysis<F, R, T>(&self, input: T, f: F) -> Option<R>
             where F: Send + 'static, R: Send + 'static, T: IntoInput,
-            F: for<'tcx> FnOnce(&ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
+            F: for<'tcx> FnOnce(&Crate, &ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
         with_analysis(f, input.into_input(),
             self.sysroot.clone(), self.lib_paths.clone())
     }
@@ -314,12 +316,13 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
             &id, None).expect("phase_2 returned `None`");
 
-        let mut forest = ast_map::Forest::new(krate);
+        let krate = driver::assign_node_ids(&sess, krate);
+        let mut forest = ast_map::Forest::new(lower_crate(&krate));
         let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
+        let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
+            sess, ast_map, &krate, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
                 let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 
                 tcx.sess.abort_if_errors();
@@ -354,7 +357,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 /// the given closure with the borrowed type context and resulting `CrateAnalysis`.
 fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
-        F: for<'tcx> FnOnce(&ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
+        F: for<'tcx> FnOnce(&Crate, &ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
     let task = Builder::new().name("with_analysis".to_string());
     let data = Arc::new(Mutex::new(Vec::new()));
     let sink = SyncBuf(data.clone());
@@ -376,12 +379,14 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
             &id, None).expect("phase_2 returned `None`");
 
-        let mut forest = ast_map::Forest::new(krate);
+        let krate = driver::assign_node_ids(&sess, krate);
+        let mut forest = ast_map::Forest::new(lower_crate(&krate));
         let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
+        let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No, f).1
+            sess, ast_map, &krate, &arenas, id, MakeGlobMap::No,
+                |tcx, analysis| f(&krate, tcx, analysis)).1
     }).unwrap();
 
     match handle.join() {
