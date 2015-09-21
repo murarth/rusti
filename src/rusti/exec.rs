@@ -322,7 +322,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &krate, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
+            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
                 let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 
                 tcx.sess.abort_if_errors();
@@ -385,7 +385,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &krate, &arenas, id, MakeGlobMap::No,
+            sess, ast_map, &arenas, id, MakeGlobMap::No,
                 |tcx, analysis| f(&krate, tcx, analysis)).1
     }).unwrap();
 
