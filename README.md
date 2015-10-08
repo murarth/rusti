@@ -13,7 +13,7 @@ Nightly releases can be found at the bottom of the
 or installed using the `--channel=nightly` option to
 [rustup](https://github.com/rust-lang/rustup).
 
-Alternatively the `nighlty` release can be used in the rusti directory
+Alternatively the `nightly` release can be used in the rusti directory
 tree using [multirust](https://github.com/brson/multirust) 
 and issuing the following command from rusti folder
 
