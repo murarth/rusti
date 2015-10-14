@@ -28,7 +28,7 @@ use rustc::session::config::{self, basic_options, build_configuration, Options};
 use rustc::session::config::Input;
 use rustc::session::build_session;
 use rustc_driver::driver;
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
 
 use syntax::ast::Crate;
@@ -317,12 +317,13 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             &id, None).expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
-        let mut forest = ast_map::Forest::new(lower_crate(&krate));
+        let lcx = LoweringContext::new(&sess, Some(&krate));
+        let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
+            &sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
                 let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 
                 tcx.sess.abort_if_errors();
@@ -341,7 +342,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
                 let modp = llmod as usize;
 
                 (modp, deps)
-            }).1
+            })
     }).unwrap();
 
     match handle.join() {
@@ -380,13 +381,14 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             &id, None).expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
-        let mut forest = ast_map::Forest::new(lower_crate(&krate));
+        let lcx = LoweringContext::new(&sess, Some(&krate));
+        let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No,
-                |tcx, analysis| f(&krate, tcx, analysis)).1
+            &sess, ast_map, &arenas, id, MakeGlobMap::No,
+                |tcx, analysis| f(&krate, tcx, analysis))
     }).unwrap();
 
     match handle.join() {
