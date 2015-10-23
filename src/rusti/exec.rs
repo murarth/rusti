@@ -309,12 +309,12 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
         let cfg = build_configuration(&sess);
 
-        let id = "repl".to_string();
+        let id = "repl";
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
-            &id, None).expect("phase_2 returned `None`");
+            id, None).expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
         let lcx = LoweringContext::new(&sess, Some(&krate));
@@ -373,12 +373,12 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
         let cfg = build_configuration(&sess);
 
-        let id = "repl".to_string();
+        let id = "repl";
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
         let krate = driver::phase_2_configure_and_expand(&sess, krate,
-            &id, None).expect("phase_2 returned `None`");
+            id, None).expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
         let lcx = LoweringContext::new(&sess, Some(&krate));
