@@ -9,7 +9,7 @@
 //! A REPL for the Rust programming language.
 
 #![crate_name = "rusti"]
-#![feature(path_ext, rustc_private, set_stdio)]
+#![feature(rustc_private, set_stdio)]
 
 extern crate getopts;
 extern crate libc;
@@ -26,7 +26,6 @@ extern crate env_logger;
 
 use getopts::Options;
 
-use std::fs::PathExt;
 use std::path::PathBuf;
 
 pub mod completion;
