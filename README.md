@@ -78,6 +78,29 @@ program can define functions, no functions will be called automatically.
 Instead, all statements not within a function body will be executed sequentially,
 just like interactive mode.
 
+### Loading Crates
+
+Loading crates which are part of the standard Rust distribution is as easy as
+declaring the crate, thusly:
+
+```rust
+extern crate foo;
+```
+
+However, loading a crate that you have compiled yourself requires some extra steps:
+
+* First, `rusti` must be able to find the location of compiled crate.  
+  You can add a path to its search list using the command line option `-L path`.  
+  `rusti` accepts any number of `-L` arguments.
+* Secondly, `rusti` requires both an `rlib` and a `dylib` version of the
+  compiled crate. If you're building your crate with Cargo, the following
+  command will build the required files for your project's library:
+
+      cargo rustc --lib -- --crate-type=rlib,dylib
+
+  If you're building with rustc directly, simply add `--crate-type=rlib,dylib`
+  to the build command to produce the required files.
+
 ### Code completion
 
 `rusti` provides optional support for code completion using [Racer](https://github.com/phildawes/racer).
