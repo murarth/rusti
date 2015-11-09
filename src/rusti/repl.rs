@@ -270,8 +270,8 @@ impl Repl {
         let items = items.join("\n");
 
         format!(
-r#"#![allow(dead_code, unused_imports, unused_features, unstable_features)]
-#![feature(catch_panic, std_misc)]
+r#"#![allow(dead_code, unused_imports, unused_features)]
+#![feature(catch_panic)]
 {attrs}
 {vitems}
 {items}
