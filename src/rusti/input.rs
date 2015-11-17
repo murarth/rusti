@@ -30,7 +30,6 @@ use syntax::diagnostic::Level::*;
 use syntax::diagnostics::registry::Registry;
 use syntax::parse::{classify, token, PResult};
 use syntax::parse::{filemap_to_parser, ParseSess};
-use syntax::parse::attr::ParserAttr;
 
 use readline;
 use repl::{lookup_command, CmdArgs};
@@ -342,7 +341,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                 }
             }
 
-            let stmt = match p.parse_stmt() {
+            let stmt = match p.parse_stmt().unwrap() {
                 None => break,
                 Some(stmt) => stmt,
             };
