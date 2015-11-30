@@ -13,6 +13,7 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::Command;
+use std::rc::Rc;
 use std::str::from_utf8;
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
@@ -22,19 +23,21 @@ use rustc_lint;
 
 use rustc::front::map as ast_map;
 use rustc::llvm;
-use rustc::metadata::cstore::RequireDynamic;
+use rustc::middle::cstore::LinkagePreference::RequireDynamic;
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Options};
 use rustc::session::config::Input;
 use rustc::session::build_session;
-use rustc_driver::driver;
+use rustc_driver::{cstore_to_cratestore, driver};
 use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 
 use syntax::ast::Crate;
 use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::parse::token;
 
 /// Compiles input code into an execution environment.
 pub struct ExecutionEngine {
@@ -304,7 +307,10 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             io::set_panic(Box::new(sink));
         }
         let opts = build_exec_options(sysroot, libs);
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
+        let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+        let cstore_ = cstore_to_cratestore(cstore.clone());
+        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
+            cstore_);
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -313,7 +319,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
-        let krate = driver::phase_2_configure_and_expand(&sess, krate,
+        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
             id, None).expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
@@ -323,12 +329,13 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            &sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, mir_map, analysis| {
+            &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
+            |tcx, mir_map, analysis| {
                 let trans = driver::phase_4_translate_to_llvm(tcx, mir_map, analysis);
 
                 tcx.sess.abort_if_errors();
 
-                let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
+                let crates = tcx.sess.cstore.used_crates(RequireDynamic);
 
                 // Collect crates used in the session.
                 // Reverse order finds dependencies first.
@@ -368,7 +375,10 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             io::set_panic(Box::new(sink));
         }
         let opts = build_exec_options(sysroot, libs);
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
+        let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+        let cstore_ = cstore_to_cratestore(cstore.clone());
+        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
+            cstore_);
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -377,7 +387,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
-        let krate = driver::phase_2_configure_and_expand(&sess, krate,
+        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
             id, None).expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
@@ -387,7 +397,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         let ast_map = driver::make_map(&sess, &mut forest);
 
         driver::phase_3_run_analysis_passes(
-            &sess, ast_map, &arenas, id, MakeGlobMap::No,
+            &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
                 |tcx, _mir_map, analysis| f(&krate, tcx, analysis))
     }).unwrap();
 
