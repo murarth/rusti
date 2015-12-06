@@ -271,7 +271,7 @@ impl Repl {
 
         format!(
 r#"#![allow(dead_code, unused_imports, unused_features)]
-#![feature(catch_panic)]
+#![feature(recover)]
 {attrs}
 {vitems}
 {items}
@@ -339,7 +339,7 @@ r#"#![allow(dead_code, unused_imports, unused_features)]
 r#"
 #[no_mangle]
 pub fn {name}() {{
-    let _ = std::thread::catch_panic(_rusti_inner);
+    let _ = std::panic::recover(_rusti_inner);
 }}
 
 fn _rusti_inner() {{
