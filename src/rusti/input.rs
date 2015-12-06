@@ -355,11 +355,11 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                     }
                     !try_fatal(p.eat(&token::Semi))
                 }
-                StmtMac(_, MacStmtWithoutBraces) => {
+                StmtMac(_, MacStmtWithoutBraces, _) => {
                     try_fatal(p.expect_one_of(&[], &[token::Semi, token::Eof]));
                     !try_fatal(p.eat(&token::Semi))
                 }
-                StmtMac(_, _) => false,
+                StmtMac(_, _, _) => false,
                 StmtDecl(ref decl, _) => {
                     if let DeclLocal(_) = decl.node {
                         try_fatal(p.expect(&token::Semi));
@@ -387,7 +387,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                         }
                     }
                 },
-                StmtMac(_, MacStmtWithBraces) => &mut input.items,
+                StmtMac(_, MacStmtWithBraces, _) => &mut input.items,
                 _ => &mut input.statements,
             };
 
