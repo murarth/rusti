@@ -34,7 +34,8 @@ use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 
 use syntax::ast::Crate;
-use syntax::diagnostic::{self, Emitter};
+use syntax::errors;
+use syntax::errors::emitter::{Emitter, BasicEmitter};
 use syntax::diagnostics::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
@@ -267,7 +268,7 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     opts.maybe_sysroot = Some(sysroot);
 
     for p in libs.iter() {
-        opts.search_paths.add_path(&p, diagnostic::ColorConfig::Auto);
+        opts.search_paths.add_path(&p, errors::ColorConfig::Auto);
     }
 
     // Prefer faster build times
@@ -411,15 +412,15 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 }
 
 fn handle_compiler_panic(e: Box<Any + Send + 'static>, data: Arc<Mutex<Vec<u8>>>) {
-    if !e.is::<diagnostic::FatalError>() {
-        if !e.is::<diagnostic::ExplicitBug>() {
-            let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+    if !e.is::<errors::FatalError>() {
+        if !e.is::<errors::ExplicitBug>() {
+            let mut emitter = BasicEmitter::stderr(errors::ColorConfig::Auto);
 
             emitter.emit(
                 None,
                 "unexpected panic",
                 None,
-                diagnostic::Bug);
+                errors::Level::Bug);
         }
 
         print!("{}", from_utf8(&data.lock().unwrap()).unwrap());

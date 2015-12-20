@@ -17,17 +17,14 @@ use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
-use rustc;
-
 use syntax::ast::Decl_::*;
 use syntax::ast::Item_::*;
 use syntax::ast::MacStmtStyle::*;
 use syntax::ast::Stmt_::*;
-use syntax::codemap::{BytePos, CodeMap, Span};
-use syntax::diagnostic::{Auto, Emitter, EmitterWriter};
-use syntax::diagnostic::{Handler, Level, RenderSpan};
-use syntax::diagnostic::Level::*;
-use syntax::diagnostics::registry::Registry;
+use syntax::codemap::{BytePos, Span};
+use syntax::errors::{ColorConfig, Handler, Level, RenderSpan};
+use syntax::errors::emitter::{Emitter, BasicEmitter};
+use syntax::errors::Level::*;
 use syntax::parse::{classify, token, PResult};
 use syntax::parse::{filemap_to_parser, ParseSess};
 
@@ -312,11 +309,11 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             io::set_panic(Box::new(io::sink()));
         }
         let mut input = Input::new();
-        let handler = Handler::with_emitter(false,
+        let handler = Handler::with_emitter(false, false,
             Box::new(ErrorEmitter::new(err_tx, filter)));
         let mut sess = ParseSess::new();
 
-        sess.span_diagnostic.handler = handler;
+        sess.span_diagnostic = handler;
 
         let mut p = filemap_to_parser(&sess,
             sess.codemap().new_filemap(filename, code.to_string()),
@@ -424,7 +421,7 @@ fn try_fatal<T>(r: PResult<T>) -> T {
 struct ErrorEmitter {
     /// Sends true for fatal errors; false for `More` errors
     errors: Sender<bool>,
-    emitter: EmitterWriter,
+    emitter: BasicEmitter,
     filter: bool,
 }
 
@@ -435,15 +432,14 @@ impl ErrorEmitter {
     fn new(tx: Sender<bool>, filter: bool) -> ErrorEmitter {
         ErrorEmitter{
             errors: tx,
-            emitter: EmitterWriter::stderr(Auto,
-                Some(Registry::new(&rustc::DIAGNOSTICS))),
+            emitter: BasicEmitter::stderr(ColorConfig::Auto),
             filter: filter,
         }
     }
 }
 
 impl Emitter for ErrorEmitter {
-    fn emit(&mut self, cmsp: Option<(&CodeMap, Span)>, msg: &str,
+    fn emit(&mut self, cmsp: Option<Span>, msg: &str,
             code: Option<&str>, lvl: Level) {
         if !self.filter {
             self.emitter.emit(cmsp, msg, code, lvl);
@@ -472,7 +468,7 @@ impl Emitter for ErrorEmitter {
         }
     }
 
-    fn custom_emit(&mut self, _cm: &CodeMap, _sp: RenderSpan,
+    fn custom_emit(&mut self, _sp: RenderSpan,
             _msg: &str, _lvl: Level) {
         panic!("ErrorEmitter does not implement custom_emit");
     }
