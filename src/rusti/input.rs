@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::mem::swap;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
@@ -21,9 +22,9 @@ use syntax::ast::Decl_::*;
 use syntax::ast::Item_::*;
 use syntax::ast::MacStmtStyle::*;
 use syntax::ast::Stmt_::*;
-use syntax::codemap::{BytePos, Span};
+use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::errors::{ColorConfig, Handler, Level, RenderSpan};
-use syntax::errors::emitter::{Emitter, BasicEmitter};
+use syntax::errors::emitter::{Emitter, EmitterWriter};
 use syntax::errors::Level::*;
 use syntax::parse::{classify, token, PResult};
 use syntax::parse::{filemap_to_parser, ParseSess};
@@ -309,11 +310,10 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             io::set_panic(Box::new(io::sink()));
         }
         let mut input = Input::new();
+        let cm = Rc::new(CodeMap::new());
         let handler = Handler::with_emitter(false, false,
-            Box::new(ErrorEmitter::new(err_tx, filter)));
-        let mut sess = ParseSess::new();
-
-        sess.span_diagnostic = handler;
+            Box::new(ErrorEmitter::new(cm.clone(), err_tx, filter)));
+        let sess = ParseSess::with_span_handler(handler, cm);
 
         let mut p = filemap_to_parser(&sess,
             sess.codemap().new_filemap(filename, code.to_string()),
@@ -421,7 +421,7 @@ fn try_fatal<T>(r: PResult<T>) -> T {
 struct ErrorEmitter {
     /// Sends true for fatal errors; false for `More` errors
     errors: Sender<bool>,
-    emitter: BasicEmitter,
+    emitter: EmitterWriter,
     filter: bool,
 }
 
@@ -429,10 +429,10 @@ impl ErrorEmitter {
     /// Constructs a new `ErrorEmitter` which will report fatal-ness of errors
     /// to the given channel and emit non-fatal error messages to `stderr`.
     /// If `filter` is false, all errors are considered fatal.
-    fn new(tx: Sender<bool>, filter: bool) -> ErrorEmitter {
+    fn new(cm: Rc<CodeMap>, tx: Sender<bool>, filter: bool) -> ErrorEmitter {
         ErrorEmitter{
             errors: tx,
-            emitter: BasicEmitter::stderr(ColorConfig::Auto),
+            emitter: EmitterWriter::stderr(ColorConfig::Auto, None, cm),
             filter: filter,
         }
     }
