@@ -28,7 +28,7 @@ use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Options};
 use rustc::session::config::Input;
 use rustc::session::build_session;
-use rustc_driver::{cstore_to_cratestore, driver};
+use rustc_driver::driver;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -309,9 +309,8 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         }
         let opts = build_exec_options(sysroot, libs);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-        let cstore_ = cstore_to_cratestore(cstore.clone());
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
-            cstore_);
+            cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -377,9 +376,8 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         }
         let opts = build_exec_options(sysroot, libs);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-        let cstore_ = cstore_to_cratestore(cstore.clone());
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
-            cstore_);
+            cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
