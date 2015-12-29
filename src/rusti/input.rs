@@ -474,7 +474,17 @@ impl Emitter for ErrorEmitter {
     }
 }
 
+#[cfg(not(windows))]
 pub fn stdin_tty() -> bool {
     use libc::{isatty, STDIN_FILENO};
     unsafe { isatty(STDIN_FILENO) == 1 }
+}
+
+#[cfg(windows)]
+pub fn stdin_tty() -> bool {
+    // FIXME: `STDIN_FILENO` is not available in libc on Windows.
+    // The proper way to test for this is `isatty(fileno(stdin))`, but
+    // C stdin filehandle cannot be accessed from Rust.
+    use libc::isatty;
+    unsafe { isatty(0) == 1 }
 }
