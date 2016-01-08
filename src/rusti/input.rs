@@ -324,7 +324,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
         while p.token != token::Eof {
             if let token::DocComment(_) = p.token {
-                try_fatal(p.bump());
+                p.bump();
                 continue;
             }
 
@@ -350,11 +350,11 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                     if classify::expr_requires_semi_to_be_stmt(&**e) {
                         try_fatal(p.commit_stmt(&[], &[token::Semi, token::Eof]));
                     }
-                    !try_fatal(p.eat(&token::Semi))
+                    !p.eat(&token::Semi)
                 }
                 StmtMac(_, MacStmtWithoutBraces, _) => {
                     try_fatal(p.expect_one_of(&[], &[token::Semi, token::Eof]));
-                    !try_fatal(p.eat(&token::Semi))
+                    !p.eat(&token::Semi)
                 }
                 StmtMac(_, _, _) => false,
                 StmtDecl(ref decl, _) => {
@@ -364,7 +364,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                         // Consume the semicolon if there is one,
                         // but don't add it to the item
                         hi = Some(p.last_span.hi);
-                        try_fatal(p.eat(&token::Semi));
+                        p.eat(&token::Semi);
                     }
                     false
                 }
