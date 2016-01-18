@@ -25,8 +25,8 @@ use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::middle::cstore::LinkagePreference::RequireDynamic;
 use rustc::middle::ty;
-use rustc::session::config::{self, basic_options, build_configuration, Options};
-use rustc::session::config::Input;
+use rustc::session::config::{self, basic_options, build_configuration,
+    ErrorOutputType, Input, Options, OptLevel};
 use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_front::lowering::{lower_crate, LoweringContext};
@@ -268,11 +268,12 @@ fn build_exec_options(sysroot: PathBuf, libs: Vec<String>) -> Options {
     opts.maybe_sysroot = Some(sysroot);
 
     for p in libs.iter() {
-        opts.search_paths.add_path(&p, errors::ColorConfig::Auto);
+        opts.search_paths.add_path(&p,
+            ErrorOutputType::HumanReadable(errors::ColorConfig::Auto));
     }
 
     // Prefer faster build times
-    opts.optimize = config::No;
+    opts.optimize = OptLevel::No;
 
     // Don't require a `main` function
     opts.crate_types = vec![config::CrateTypeDylib];
