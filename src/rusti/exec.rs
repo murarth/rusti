@@ -28,7 +28,7 @@ use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration,
     ErrorOutputType, Input, Options, OptLevel};
 use rustc::session::build_session;
-use rustc_driver::driver;
+use rustc_driver::{abort_on_err, driver};
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -329,7 +329,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut forest);
 
-        driver::phase_3_run_analysis_passes(
+        abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
             |tcx, mir_map, analysis| {
                 let trans = driver::phase_4_translate_to_llvm(tcx, mir_map, analysis);
@@ -350,7 +350,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
                 let modp = llmod as usize;
 
                 (modp, deps)
-            })
+            }), &sess)
     }).unwrap();
 
     match handle.join() {
@@ -396,9 +396,9 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut forest);
 
-        driver::phase_3_run_analysis_passes(
+        abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
-                |tcx, _mir_map, analysis| f(&krate, tcx, analysis))
+                |tcx, _mir_map, analysis| f(&krate, tcx, analysis)), &sess)
     }).unwrap();
 
     match handle.join() {
