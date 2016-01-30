@@ -22,7 +22,7 @@ use syntax::ast::Decl_::*;
 use syntax::ast::Item_::*;
 use syntax::ast::MacStmtStyle::*;
 use syntax::ast::Stmt_::*;
-use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::codemap::{BytePos, CodeMap, MultiSpan};
 use syntax::errors::{ColorConfig, Handler, Level, RenderSpan};
 use syntax::errors::emitter::{Emitter, EmitterWriter};
 use syntax::errors::Level::*;
@@ -439,10 +439,10 @@ impl ErrorEmitter {
 }
 
 impl Emitter for ErrorEmitter {
-    fn emit(&mut self, cmsp: Option<Span>, msg: &str,
+    fn emit(&mut self, span: Option<&MultiSpan>, msg: &str,
             code: Option<&str>, lvl: Level) {
         if !self.filter {
-            self.emitter.emit(cmsp, msg, code, lvl);
+            self.emitter.emit(span, msg, code, lvl);
             self.errors.send(true).unwrap();
             return;
         }
@@ -458,7 +458,7 @@ impl Emitter for ErrorEmitter {
                         msg.contains("unterminated raw string") {
                     self.errors.send(false).unwrap();
                 } else {
-                    self.emitter.emit(cmsp, msg, code, lvl);
+                    self.emitter.emit(span, msg, code, lvl);
                     self.errors.send(true).unwrap();
                     // Send any "help" messages that may follow
                     self.filter = false;
@@ -468,7 +468,7 @@ impl Emitter for ErrorEmitter {
         }
     }
 
-    fn custom_emit(&mut self, _sp: RenderSpan,
+    fn custom_emit(&mut self, _sp: &RenderSpan,
             _msg: &str, _lvl: Level) {
         panic!("ErrorEmitter does not implement custom_emit");
     }
