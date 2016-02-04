@@ -331,8 +331,8 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
         abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
-            |tcx, mir_map, analysis| {
-                let trans = driver::phase_4_translate_to_llvm(tcx, mir_map, analysis);
+            |tcx, mir_map, analysis, _| {
+                let trans = driver::phase_4_translate_to_llvm(tcx, mir_map.unwrap(), analysis);
 
                 tcx.sess.abort_if_errors();
 
@@ -398,7 +398,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
         abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
-                |tcx, _mir_map, analysis| f(&krate, tcx, analysis)), &sess)
+                |tcx, _mir_map, analysis, _| f(&krate, tcx, analysis)), &sess)
     }).unwrap();
 
     match handle.join() {
