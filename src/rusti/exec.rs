@@ -332,7 +332,10 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
             |tcx, mir_map, analysis, _| {
-                let trans = driver::phase_4_translate_to_llvm(tcx, mir_map.unwrap(), analysis);
+                tcx.sess.abort_if_errors();
+
+                let trans = driver::phase_4_translate_to_llvm(
+                    tcx, mir_map.expect("mir_map is None"), analysis);
 
                 tcx.sess.abort_if_errors();
 
