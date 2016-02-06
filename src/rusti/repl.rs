@@ -123,7 +123,7 @@ impl Repl {
     /// Constructs a new `Repl` with additional library lookup paths.
     pub fn new_with_libs(libs: Vec<String>, sysroot: Option<PathBuf>) -> Repl {
         let argv0 = args().next()
-            .unwrap_or_else(|| "rusti".to_string());
+            .unwrap_or_else(|| "rusti".to_owned());
 
         Repl{
             argv0: argv0,
@@ -407,7 +407,7 @@ fn _rusti_inner() {{
     }
 
     fn expr_type(&self, fn_name: &str, prog: String) -> Option<String> {
-        let fn_name = fn_name.to_string();
+        let fn_name = fn_name.to_owned();
 
         self.engine.with_analysis(prog, move |krate, tcx, _analysis| {
             let mut v = ExprType{

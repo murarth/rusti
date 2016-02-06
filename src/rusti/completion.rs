@@ -152,7 +152,7 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
 
                 let mut name = match fields.next() {
                     // Remove item's prefix
-                    Some(name) => name[prefix_len..].to_string(),
+                    Some(name) => name[prefix_len..].to_owned(),
                     None => {
                         warn!("missing name in MATCH value: {:?}", rest);
                         return None;

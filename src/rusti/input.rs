@@ -275,11 +275,11 @@ pub fn parse_command(line: &str, filter: bool) -> InputResult {
         CmdArgs::Expr => {
             let args = args.unwrap();
             match parse_program(args, filter, None) {
-                Program(_) => Command(name.to_string(), Some(args.to_string())),
+                Program(_) => Command(name.to_owned(), Some(args.to_owned())),
                 i => i,
             }
         }
-        _ => Command(name.to_string(), args.map(|s| s.to_string()))
+        _ => Command(name.to_owned(), args.map(|s| s.to_owned()))
     }
 }
 
@@ -293,17 +293,17 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     let (tx, rx) = channel();
     let (err_tx, err_rx) = channel();
 
-    let task = Builder::new().name("parse_program".to_string());
+    let task = Builder::new().name("parse_program".to_owned());
 
     // Items are not returned in data structures; nor are they converted back
     // into strings. Instead, to preserve user input formatting, we use
     // byte offsets to return the input as it was received.
     fn slice(s: &String, lo: BytePos, hi: BytePos) -> String {
-        s[lo.0 as usize .. hi.0 as usize].to_string()
+        s[lo.0 as usize .. hi.0 as usize].to_owned()
     }
 
-    let code = code.to_string();
-    let filename = filename.unwrap_or("<input>").to_string();
+    let code = code.to_owned();
+    let filename = filename.unwrap_or("<input>").to_owned();
 
     let handle = task.spawn(move || {
         if !log_enabled!(::log::LogLevel::Debug) {
@@ -316,7 +316,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
         let sess = ParseSess::with_span_handler(handler, cm);
 
         let mut p = filemap_to_parser(&sess,
-            sess.codemap().new_filemap(filename, code.to_string()),
+            sess.codemap().new_filemap(filename, code.to_owned()),
             Vec::new());
 
         // Whether the last statement is an expression without a semicolon

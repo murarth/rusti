@@ -56,7 +56,7 @@ pub trait IntoInput {
 
 impl<'a> IntoInput for &'a str {
     fn into_input(self) -> Input {
-        Input::Str(self.to_string())
+        Input::Str(self.to_owned())
     }
 }
 
@@ -398,7 +398,7 @@ fn check_compile<F, R>(f: F) -> R where F: FnOnce() -> Result<R, usize> {
 
 fn monitor<F, R>(f: F) -> Option<R>
         where F: Send + 'static + FnOnce() -> R, R: Send + 'static {
-    let thread = Builder::new().name("compile_input".to_string());
+    let thread = Builder::new().name("compile_input".to_owned());
     let data = Arc::new(Mutex::new(Vec::new()));
     let sink = SyncBuf(data.clone());
 
