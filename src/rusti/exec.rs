@@ -21,6 +21,7 @@ use std::thread::Builder;
 use rustc;
 use rustc_lint;
 
+use rustc::dep_graph::DepGraph;
 use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::middle::cstore::LinkagePreference::RequireDynamic;
@@ -319,7 +320,8 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
             let krate = driver::assign_node_ids(&sess, krate);
             let lcx = LoweringContext::new(&sess, Some(&krate));
-            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
+            let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
             let arenas = ty::CtxtArenas::new();
             let ast_map = driver::make_map(&sess, &mut forest);
 
@@ -378,13 +380,17 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
             let krate = driver::assign_node_ids(&sess, krate);
             let lcx = LoweringContext::new(&sess, Some(&krate));
-            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
+            let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
             let arenas = ty::CtxtArenas::new();
             let ast_map = driver::make_map(&sess, &mut forest);
 
             driver::phase_3_run_analysis_passes(
                 &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
-                    |tcx, _mir_map, analysis, _| f(&krate, tcx, analysis))
+                    |tcx, _mir_map, analysis, _| {
+                        let _ignore = tcx.dep_graph.in_ignore();
+                        f(&krate, tcx, analysis)
+                    })
         })
     })
 }
