@@ -338,7 +338,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
                 }
             }
 
-            let stmt = match p.parse_stmt().unwrap() {
+            let stmt = match try_fatal(p.parse_stmt()) {
                 None => break,
                 Some(stmt) => stmt,
             };
@@ -413,7 +413,10 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 fn try_fatal<T>(r: PResult<T>) -> T {
     match r {
         Ok(t) => t,
-        Err(_) => panic!("fatal error")
+        Err(mut diag) => {
+            diag.emit();
+            panic!("fatal parse error");
+        }
     }
 }
 

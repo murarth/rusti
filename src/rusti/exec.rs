@@ -25,10 +25,10 @@ use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::middle::cstore::LinkagePreference::RequireDynamic;
 use rustc::middle::ty;
+use rustc::session::build_session;
 use rustc::session::config::{self, basic_options, build_configuration,
     ErrorOutputType, Input, Options, OptLevel};
-use rustc::session::build_session;
-use rustc_driver::{abort_on_err, driver};
+use rustc_driver::driver;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -300,14 +300,7 @@ impl Write for SyncBuf {
 /// for crates used in the given input.
 fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
-    let task = Builder::new().name("compile_input".to_string());
-    let data = Arc::new(Mutex::new(Vec::new()));
-    let sink = SyncBuf(data.clone());
-
-    let handle = task.spawn(move || {
-        if !log_enabled!(::log::LogLevel::Debug) {
-            io::set_panic(Box::new(sink));
-        }
+    let r = monitor(move || {
         let opts = build_exec_options(sysroot, libs);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
@@ -320,49 +313,45 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
-        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
-            id, None).expect("phase_2 returned `None`");
+        check_compile(|| {
+            let krate = try!(driver::phase_2_configure_and_expand(
+                    &sess, &cstore, krate, id, None));
 
-        let krate = driver::assign_node_ids(&sess, krate);
-        let lcx = LoweringContext::new(&sess, Some(&krate));
-        let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
-        let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::make_map(&sess, &mut forest);
+            let krate = driver::assign_node_ids(&sess, krate);
+            let lcx = LoweringContext::new(&sess, Some(&krate));
+            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
+            let arenas = ty::CtxtArenas::new();
+            let ast_map = driver::make_map(&sess, &mut forest);
 
-        abort_on_err(driver::phase_3_run_analysis_passes(
-            &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
-            |tcx, mir_map, analysis, _| {
-                tcx.sess.abort_if_errors();
+            driver::phase_3_run_analysis_passes(
+                &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
+                |tcx, mir_map, analysis, _| {
+                    tcx.sess.abort_if_errors();
 
-                let trans = driver::phase_4_translate_to_llvm(
-                    tcx, mir_map.expect("mir_map is None"), analysis);
+                    let trans = driver::phase_4_translate_to_llvm(
+                        tcx, mir_map.expect("mir_map is None"), analysis);
 
-                tcx.sess.abort_if_errors();
+                    tcx.sess.abort_if_errors();
 
-                let crates = tcx.sess.cstore.used_crates(RequireDynamic);
+                    let crates = tcx.sess.cstore.used_crates(RequireDynamic);
 
-                // Collect crates used in the session.
-                // Reverse order finds dependencies first.
-                let deps = crates.into_iter().rev()
-                    .filter_map(|(_, p)| p).collect();
+                    // Collect crates used in the session.
+                    // Reverse order finds dependencies first.
+                    let deps = crates.into_iter().rev()
+                        .filter_map(|(_, p)| p).collect();
 
-                assert_eq!(trans.modules.len(), 1);
-                let llmod = trans.modules[0].llmod;
+                    assert_eq!(trans.modules.len(), 1);
+                    let llmod = trans.modules[0].llmod;
 
-                // Workaround because raw pointers do not impl Send
-                let modp = llmod as usize;
+                    // Workaround because raw pointers do not impl Send
+                    let modp = llmod as usize;
 
-                (modp, deps)
-            }), &sess)
-    }).unwrap();
+                    (modp, deps)
+                })
+        })
+    });
 
-    match handle.join() {
-        Ok((llmod, deps)) => Some((llmod as llvm::ModuleRef, deps)),
-        Err(e) => {
-            handle_compiler_panic(e, data);
-            None
-        }
-    }
+    r.map(|(modp, deps)| (modp as llvm::ModuleRef, deps))
 }
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
@@ -370,14 +359,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
         F: for<'tcx> FnOnce(&Crate, &ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
-    let task = Builder::new().name("with_analysis".to_string());
-    let data = Arc::new(Mutex::new(Vec::new()));
-    let sink = SyncBuf(data.clone());
-
-    let handle = task.spawn(move || {
-        if !log_enabled!(::log::LogLevel::Debug) {
-            io::set_panic(Box::new(sink));
-        }
+    monitor(move || {
         let opts = build_exec_options(sysroot, libs);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
@@ -390,18 +372,41 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
-        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
-            id, None).expect("phase_2 returned `None`");
+        check_compile(|| {
+            let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
+                id, None).expect("phase_2 returned `None`");
 
-        let krate = driver::assign_node_ids(&sess, krate);
-        let lcx = LoweringContext::new(&sess, Some(&krate));
-        let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
-        let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::make_map(&sess, &mut forest);
+            let krate = driver::assign_node_ids(&sess, krate);
+            let lcx = LoweringContext::new(&sess, Some(&krate));
+            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
+            let arenas = ty::CtxtArenas::new();
+            let ast_map = driver::make_map(&sess, &mut forest);
 
-        abort_on_err(driver::phase_3_run_analysis_passes(
-            &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
-                |tcx, _mir_map, analysis, _| f(&krate, tcx, analysis)), &sess)
+            driver::phase_3_run_analysis_passes(
+                &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
+                    |tcx, _mir_map, analysis, _| f(&krate, tcx, analysis))
+        })
+    })
+}
+
+fn check_compile<F, R>(f: F) -> R where F: FnOnce() -> Result<R, usize> {
+    match f() {
+        Ok(r) => r,
+        Err(_) => panic!()
+    }
+}
+
+fn monitor<F, R>(f: F) -> Option<R>
+        where F: Send + 'static + FnOnce() -> R, R: Send + 'static {
+    let thread = Builder::new().name("compile_input".to_string());
+    let data = Arc::new(Mutex::new(Vec::new()));
+    let sink = SyncBuf(data.clone());
+
+    let handle = thread.spawn(move || {
+        if !log_enabled!(::log::LogLevel::Debug) {
+            io::set_panic(Box::new(sink));
+        }
+        f()
     }).unwrap();
 
     match handle.join() {
