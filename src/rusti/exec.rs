@@ -353,7 +353,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         })
     });
 
-    r.map(|(modp, deps)| (modp as llvm::ModuleRef, deps))
+    r.and_then(|r| r).map(|(modp, deps)| (modp as llvm::ModuleRef, deps))
 }
 
 /// Compiles input up to phase 3, type/region check analysis, and calls
@@ -392,14 +392,11 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
                         f(&krate, tcx, analysis)
                     })
         })
-    })
+    }).and_then(|r| r)
 }
 
-fn check_compile<F, R>(f: F) -> R where F: FnOnce() -> Result<R, usize> {
-    match f() {
-        Ok(r) => r,
-        Err(_) => panic!()
-    }
+fn check_compile<F, R>(f: F) -> Option<R> where F: FnOnce() -> Result<R, usize> {
+    f().ok()
 }
 
 fn monitor<F, R>(f: F) -> Option<R>
