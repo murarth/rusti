@@ -18,10 +18,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Builder;
 
-use syntax::ast::Decl_::*;
-use syntax::ast::Item_::*;
-use syntax::ast::MacStmtStyle::*;
-use syntax::ast::Stmt_::*;
+use syntax::ast::{DeclKind, ItemKind, MacStmtStyle, StmtKind};
 use syntax::codemap::{BytePos, CodeMap, MultiSpan};
 use syntax::errors::{ColorConfig, Handler, Level, RenderSpan};
 use syntax::errors::emitter::{Emitter, EmitterWriter};
@@ -346,19 +343,19 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             let mut hi = None;
 
             last_expr = match stmt.node {
-                StmtExpr(ref e, _) => {
+                StmtKind::Expr(ref e, _) => {
                     if classify::expr_requires_semi_to_be_stmt(&**e) {
                         try_fatal(p.commit_stmt(&[], &[token::Semi, token::Eof]));
                     }
                     !p.eat(&token::Semi)
                 }
-                StmtMac(_, MacStmtWithoutBraces, _) => {
+                StmtKind::Mac(_, MacStmtStyle::NoBraces, _) => {
                     try_fatal(p.expect_one_of(&[], &[token::Semi, token::Eof]));
                     !p.eat(&token::Semi)
                 }
-                StmtMac(_, _, _) => false,
-                StmtDecl(ref decl, _) => {
-                    if let DeclLocal(_) = decl.node {
+                StmtKind::Mac(_, _, _) => false,
+                StmtKind::Decl(ref decl, _) => {
+                    if let DeclKind::Local(_) = decl.node {
                         try_fatal(p.expect(&token::Semi));
                     } else {
                         // Consume the semicolon if there is one,
@@ -372,19 +369,19 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             };
 
             let dest = match stmt.node {
-                StmtDecl(ref decl, _) => {
+                StmtKind::Decl(ref decl, _) => {
                     match decl.node {
-                        DeclLocal(..) => &mut input.statements,
-                        DeclItem(ref item) => {
+                        DeclKind::Local(..) => &mut input.statements,
+                        DeclKind::Item(ref item) => {
                             match item.node {
-                                ItemExternCrate(..) | ItemUse(..) =>
+                                ItemKind::ExternCrate(..) | ItemKind::Use(..) =>
                                     &mut input.view_items,
                                 _ => &mut input.items,
                             }
                         }
                     }
                 },
-                StmtMac(_, MacStmtWithBraces, _) => &mut input.items,
+                StmtKind::Mac(_, MacStmtStyle::Braces, _) => &mut input.items,
                 _ => &mut input.statements,
             };
 

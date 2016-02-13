@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use rustc::middle::ty;
 
 use syntax::{ast, codemap};
-use syntax::ast::Stmt_::StmtSemi;
+use syntax::ast::StmtKind;
 use syntax::visit::{self, FnKind};
 
 use exec::ExecutionEngine;
@@ -457,7 +457,7 @@ impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
         if let FnKind::ItemFn(ident, _, _, _, _, _) = fk {
             if &*ident.name.as_str() == self.fn_name {
                 if let Some(ref stmt) = b.stmts.last() {
-                    if let StmtSemi(ref expr, _) = stmt.node {
+                    if let StmtKind::Semi(ref expr, _) = stmt.node {
                         let id = expr.id;
                         if let Some(ty) = self.ty_cx.node_types().get(&id) {
                             self.result = Some(format!("{:?}", ty));
