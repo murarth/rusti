@@ -4,6 +4,22 @@ A REPL for the Rust programming language.
 
 Rusti is a work in progress.
 
+## Dependencies
+
+Rusti requires GNU Readline.
+
+### Ubuntu / Debian
+
+```
+sudo apt-get install libreadline-dev
+```
+
+### Fedora / CentOS
+
+```
+sudo yum install readline-devel
+```
+
 ## Building
 
 Rusti builds with the latest Rust nightly, using the Cargo build system.  
@@ -18,8 +34,6 @@ tree using [multirust](https://github.com/brson/multirust)
 and issuing the following command from rusti folder
 
     multirust override nightly
-
-Rusti requires GNU Readline.
 
 Build with Cargo:
 
