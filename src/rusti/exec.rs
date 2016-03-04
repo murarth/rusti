@@ -158,7 +158,7 @@ impl ExecutionEngine {
     /// the produced analysis.
     pub fn with_analysis<F, R, T>(&self, input: T, f: F) -> Option<R>
             where F: Send + 'static, R: Send + 'static, T: IntoInput,
-            F: for<'tcx> FnOnce(&Crate, &ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
+            F: for<'tcx> FnOnce(&Crate, &ty::TyCtxt<'tcx>, ty::CrateAnalysis) -> R {
         with_analysis(f, input.into_input(),
             self.sysroot.clone(), self.lib_paths.clone())
     }
@@ -360,7 +360,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 /// the given closure with the borrowed type context and resulting `CrateAnalysis`.
 fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
-        F: for<'tcx> FnOnce(&Crate, &ty::ctxt<'tcx>, ty::CrateAnalysis) -> R {
+        F: for<'tcx> FnOnce(&Crate, &ty::TyCtxt<'tcx>, ty::CrateAnalysis) -> R {
     monitor(move || {
         let opts = build_exec_options(sysroot, libs);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));

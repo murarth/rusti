@@ -448,7 +448,7 @@ fn {name}() {{
 struct ExprType<'a, 'tcx: 'a> {
     fn_name: String,
     result: Option<String>,
-    ty_cx: &'a ty::ctxt<'tcx>,
+    ty_cx: &'a ty::TyCtxt<'tcx>,
 }
 
 impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
