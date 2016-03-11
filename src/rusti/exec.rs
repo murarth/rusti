@@ -312,11 +312,17 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
         let id = "repl";
 
-        let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+        let krate = match driver::phase_1_parse_input(&sess, cfg, &input) {
+            Ok(krate) => krate,
+            Err(mut e) => {
+                e.emit();
+                return None;
+            }
+        };
 
         check_compile(|| {
             let krate = try!(driver::phase_2_configure_and_expand(
-                    &sess, &cstore, krate, id, None));
+                &sess, &cstore, krate, id, None));
 
             let krate = driver::assign_node_ids(&sess, krate);
             let lcx = LoweringContext::new(&sess, Some(&krate));
@@ -372,11 +378,17 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
         let id = "repl";
 
-        let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+        let krate = match driver::phase_1_parse_input(&sess, cfg, &input) {
+            Ok(krate) => krate,
+            Err(mut e) => {
+                e.emit();
+                return None;
+            }
+        };
 
         check_compile(|| {
-            let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
-                id, None).expect("phase_2 returned `None`");
+            let krate = try!(driver::phase_2_configure_and_expand(
+                &sess, &cstore, krate, id, None));
 
             let krate = driver::assign_node_ids(&sess, krate);
             let lcx = LoweringContext::new(&sess, Some(&krate));

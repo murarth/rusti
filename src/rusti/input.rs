@@ -329,7 +329,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
 
             if p.token == token::Pound {
                 if p.look_ahead(1, |t| *t == token::Not) {
-                    let _ = p.parse_attribute(true);
+                    try_fatal(p.parse_attribute(true));
                     input.attributes.push(slice(&code, lo, p.last_span.hi));
                     continue;
                 }
@@ -468,9 +468,10 @@ impl Emitter for ErrorEmitter {
         }
     }
 
-    fn custom_emit(&mut self, _sp: &RenderSpan,
-            _msg: &str, _lvl: Level) {
-        panic!("ErrorEmitter does not implement custom_emit");
+    fn custom_emit(&mut self, sp: &RenderSpan, msg: &str, lvl: Level) {
+        if !self.filter {
+            self.emitter.custom_emit(sp, msg, lvl);
+        }
     }
 }
 
