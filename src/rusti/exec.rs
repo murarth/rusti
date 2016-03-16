@@ -57,13 +57,16 @@ pub trait IntoInput {
 
 impl<'a> IntoInput for &'a str {
     fn into_input(self) -> Input {
-        Input::Str(self.to_owned())
+        self.to_owned().into_input()
     }
 }
 
 impl IntoInput for String {
     fn into_input(self) -> Input {
-        Input::Str(self)
+        Input::Str{
+            name: "<input>".to_owned(),
+            input: self,
+        }
     }
 }
 
