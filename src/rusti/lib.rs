@@ -25,6 +25,8 @@ extern crate tempfile;
 #[macro_use] extern crate log;
 extern crate env_logger;
 
+#[cfg(test)] #[macro_use] extern crate assert_matches;
+
 use getopts::Options;
 
 use std::path::PathBuf;

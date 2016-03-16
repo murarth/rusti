@@ -8,7 +8,6 @@ authors = [ "Murarth <murarth@gmail.com>" ]
 
 name = "rusti"
 path = "src/rusti/lib.rs"
-test = false
 
 [[bin]]
 
@@ -22,3 +21,6 @@ getopts = "0.2"
 libc = "0.2"
 log = "0.3"
 tempfile = "1.1"
+
+[dev-dependencies]
+assert_matches = "1.0"
