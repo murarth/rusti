@@ -24,14 +24,31 @@ sudo yum install readline-devel
 
 Rusti builds with the latest Rust nightly, using the Cargo build system.  
 Currently, it **must** be built using a nightly release of the Rust compiler.
+
 Nightly releases can be found at the bottom of the
 [Rust install page](http://www.rust-lang.org/install.html)
 or installed using the `--channel=nightly` option to
 [rustup](https://github.com/rust-lang/rustup).
 
-Alternatively the `nightly` release can be used in the rusti directory
-tree using [multirust](https://github.com/brson/multirust) 
-and issuing the following command from rusti folder
+For users of stable or beta, [multirust](https://github.com/brson/multirust)
+can be used to maintain multiple concurrent Rust installs.
+
+### Installation using Cargo
+
+Rusti can be installed directly using Cargo. The following command will
+download, build, and compile Rusti, placing it in `~/.cargo/bin/` or your
+operating system equivalent.
+
+    cargo install --git https://github.com/murarth/rusti
+
+If you are using `multirust`, that command will look like this:
+
+    multirust run nightly cargo install --git https://github.com/murarth/rusti
+
+### Building from a Git clone
+
+If using [multirust](https://github.com/brson/multirust), the following command
+will create an override to use the nightly branch within the `rusti` source tree:
 
     multirust override nightly
 
@@ -47,9 +64,9 @@ Run `rusti`:
 
     cargo run
 
-Cargo does not currently support an `install` subcommand, so if you would like
-to run `rusti` outside the build directory, you must manually copy `target/rusti`
-into a directory in your `PATH` environment variable.
+Install:
+
+    cargo install
 
 ## Usage
 
