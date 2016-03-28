@@ -13,7 +13,7 @@ use std::fs::File;
 use std::mem::transmute;
 use std::path::{Path, PathBuf};
 
-use rustc::middle::ty;
+use rustc::ty;
 
 use syntax::{ast, codemap};
 use syntax::ast::StmtKind;

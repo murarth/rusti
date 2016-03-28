@@ -25,7 +25,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::middle::cstore::LinkagePreference::RequireDynamic;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc::session::build_session;
 use rustc::session::config::{self, basic_options, build_configuration,
     ErrorOutputType, Input, Options, OptLevel};
