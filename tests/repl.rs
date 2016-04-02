@@ -90,5 +90,5 @@ fn test_type() {
     assert_eq!(repl_cmd(".type 1"), "1 = i32\n");
     assert_eq!(repl_cmd(r#".t "hai2u""#), "\"hai2u\" = &'static str\n");
     assert_eq!(repl_cmd(":t &1"), "&1 = &i32\n");
-    assert_eq!(repl_cmd(".t vec![1u32]"), "vec![1u32] = collections::vec::Vec<u32>\n");
+    assert_eq!(repl_cmd(".t vec![1u32]"), "vec![1u32] = std::vec::Vec<u32>\n");
 }
