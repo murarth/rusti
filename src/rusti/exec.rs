@@ -329,7 +329,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 
             let krate = driver::assign_node_ids(&sess, krate);
             let lcx = LoweringContext::new(&sess, Some(&krate));
-            let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+            let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
             let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
             let arenas = ty::CtxtArenas::new();
             let ast_map = driver::make_map(&sess, &mut forest);
@@ -395,7 +395,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
 
             let krate = driver::assign_node_ids(&sess, krate);
             let lcx = LoweringContext::new(&sess, Some(&krate));
-            let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+            let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
             let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
             let arenas = ty::CtxtArenas::new();
             let ast_map = driver::make_map(&sess, &mut forest);
