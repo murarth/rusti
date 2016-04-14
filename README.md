@@ -43,7 +43,10 @@ operating system equivalent.
 
 If you are using `multirust`, that command will look like this:
 
+    # update to the latest nightly version
+    multirust update nightly
     multirust run nightly cargo install --git https://github.com/murarth/rusti
+
 
 ### Building from a Git clone
 
