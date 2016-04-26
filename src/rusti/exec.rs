@@ -9,6 +9,7 @@
 //! Rust code parsing and compilation.
 
 use std::any::Any;
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -31,6 +32,7 @@ use rustc::session::config::{self, basic_options, build_configuration,
     ErrorOutputType, Input, Options, OptLevel};
 use rustc_driver::driver;
 use rustc::hir::lowering::{lower_crate, LoweringContext};
+use rustc_metadata::creader::LocalCrateReader;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 
@@ -327,15 +329,18 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             let krate = try!(driver::phase_2_configure_and_expand(
                 &sess, &cstore, krate, id, None));
 
-            let krate = driver::assign_node_ids(&sess, krate);
-            let lcx = LoweringContext::new(&sess, Some(&krate));
             let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
+            let krate = driver::assign_node_ids(&sess, krate);
+            let defs = RefCell::new(ast_map::collect_definitions(&krate));
+            LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id)
+                .read_crates(&dep_graph);
+            let lcx = LoweringContext::new(&sess, Some(&krate), &defs);
             let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
             let arenas = ty::CtxtArenas::new();
-            let ast_map = driver::make_map(&sess, &mut forest);
+            let ast_map = ast_map::map_crate(&mut forest, &defs);
 
             driver::phase_3_run_analysis_passes(
-                &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
+                &sess, ast_map, &arenas, id, MakeGlobMap::No,
                 |tcx, mir_map, analysis, _| {
                     tcx.sess.abort_if_errors();
 
@@ -393,15 +398,18 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             let krate = try!(driver::phase_2_configure_and_expand(
                 &sess, &cstore, krate, id, None));
 
-            let krate = driver::assign_node_ids(&sess, krate);
-            let lcx = LoweringContext::new(&sess, Some(&krate));
             let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
+            let krate = driver::assign_node_ids(&sess, krate);
+            let defs = RefCell::new(ast_map::collect_definitions(&krate));
+            LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id)
+                .read_crates(&dep_graph);
+            let lcx = LoweringContext::new(&sess, Some(&krate), &defs);
             let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
             let arenas = ty::CtxtArenas::new();
-            let ast_map = driver::make_map(&sess, &mut forest);
+            let ast_map = ast_map::map_crate(&mut forest, &defs);
 
             driver::phase_3_run_analysis_passes(
-                &sess, &cstore, ast_map, &arenas, id, MakeGlobMap::No,
+                &sess, ast_map, &arenas, id, MakeGlobMap::No,
                     |tcx, _mir_map, analysis, _| {
                         let _ignore = tcx.dep_graph.in_ignore();
                         f(&krate, tcx, analysis)
