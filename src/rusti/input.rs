@@ -21,7 +21,7 @@ use std::thread::Builder;
 
 use syntax::ast::{DeclKind, ItemKind, MacStmtStyle, StmtKind};
 use syntax::codemap::{BytePos, CodeMap, MultiSpan};
-use syntax::errors::{ColorConfig, Handler, Level, RenderSpan};
+use syntax::errors::{ColorConfig, DiagnosticBuilder, Handler, Level};
 use syntax::errors::emitter::{Emitter, EmitterWriter};
 use syntax::errors::Level::*;
 use syntax::parse::{classify, token};
@@ -458,7 +458,7 @@ impl ErrorEmitter {
 }
 
 impl Emitter for ErrorEmitter {
-    fn emit(&mut self, span: Option<&MultiSpan>, msg: &str,
+    fn emit(&mut self, span: &MultiSpan, msg: &str,
             code: Option<&str>, lvl: Level) {
         if !self.filter {
             self.emitter.emit(span, msg, code, lvl);
@@ -468,13 +468,7 @@ impl Emitter for ErrorEmitter {
 
         match lvl {
             Bug | Fatal | Error => {
-                if msg.contains("un-closed delimiter") ||
-                        msg.contains("expected item after attributes") ||
-                        msg.contains("unterminated block comment") ||
-                        msg.contains("unterminated block doc-comment") ||
-                        msg.contains("unterminated double quote string") ||
-                        msg.contains("unterminated double quote byte string") ||
-                        msg.contains("unterminated raw string") {
+                if is_non_fatal(msg) {
                     self.set_error(ErrorState::NonFatal);
                 } else {
                     self.emitter.emit(span, msg, code, lvl);
@@ -487,11 +481,37 @@ impl Emitter for ErrorEmitter {
         }
     }
 
-    fn custom_emit(&mut self, sp: &RenderSpan, msg: &str, lvl: Level) {
+    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
         if !self.filter {
-            self.emitter.custom_emit(sp, msg, lvl);
+            self.emitter.emit_struct(db);
+            self.set_error(ErrorState::Fatal);
+            return;
+        }
+
+        match db.level() {
+            Bug | Fatal | Error => {
+                if is_non_fatal(db.message()) {
+                    self.set_error(ErrorState::NonFatal);
+                } else {
+                    self.emitter.emit_struct(db);
+                    self.set_error(ErrorState::Fatal);
+                    // Send any "help" messages that may follow
+                    self.filter = false;
+                }
+            }
+            _ => ()
         }
     }
+}
+
+fn is_non_fatal(msg: &str) -> bool {
+    msg.contains("un-closed delimiter") ||
+        msg.contains("expected item after attributes") ||
+        msg.contains("unterminated block comment") ||
+        msg.contains("unterminated block doc-comment") ||
+        msg.contains("unterminated double quote string") ||
+        msg.contains("unterminated double quote byte string") ||
+        msg.contains("unterminated raw string")
 }
 
 #[cfg(not(windows))]

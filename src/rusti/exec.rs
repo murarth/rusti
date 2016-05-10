@@ -37,6 +37,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 
 use syntax::ast::Crate;
+use syntax::codemap::MultiSpan;
 use syntax::errors;
 use syntax::errors::emitter::{Emitter, BasicEmitter};
 use syntax::diagnostics::registry::Registry;
@@ -450,7 +451,7 @@ fn handle_compiler_panic(e: Box<Any + Send + 'static>, data: Arc<Mutex<Vec<u8>>>
             let mut emitter = BasicEmitter::stderr(errors::ColorConfig::Auto);
 
             emitter.emit(
-                None,
+                &MultiSpan::new(),
                 "unexpected panic",
                 None,
                 errors::Level::Bug);
