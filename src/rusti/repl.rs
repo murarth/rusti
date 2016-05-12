@@ -444,13 +444,13 @@ fn {name}() {{
     }
 }
 
-struct ExprType<'a, 'tcx: 'a> {
+struct ExprType<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fn_name: String,
     result: Option<String>,
-    ty_cx: &'a ty::TyCtxt<'tcx>,
+    ty_cx: &'a ty::TyCtxt<'a, 'gcx, 'tcx>,
 }
 
-impl<'v, 'a, 'tcx> visit::Visitor<'v> for ExprType<'a, 'tcx> {
+impl<'v, 'a, 'gcx, 'tcx> visit::Visitor<'v> for ExprType<'a, 'gcx, 'tcx> {
     fn visit_fn(&mut self, fk: visit::FnKind<'v>, _fd: &'v ast::FnDecl,
             b: &'v ast::Block, _s: codemap::Span, _n: ast::NodeId) {
         if let FnKind::ItemFn(ident, _, _, _, _, _) = fk {

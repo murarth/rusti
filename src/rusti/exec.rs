@@ -31,7 +31,6 @@ use rustc::session::build_session;
 use rustc::session::config::{self, basic_options, build_configuration,
     ErrorOutputType, Input, Options, OptLevel};
 use rustc_driver::driver;
-use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::creader::LocalCrateReader;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -164,7 +163,7 @@ impl ExecutionEngine {
     /// the produced analysis.
     pub fn with_analysis<F, R, T>(&self, input: T, f: F) -> Option<R>
             where F: Send + 'static, R: Send + 'static, T: IntoInput,
-            F: for<'tcx> FnOnce(&Crate, &ty::TyCtxt<'tcx>, ty::CrateAnalysis) -> R {
+            F: for<'a, 'gcx, 'tcx> FnOnce(&Crate, &ty::TyCtxt<'a, 'gcx, 'tcx>, ty::CrateAnalysis) -> R {
         with_analysis(f, input.into_input(),
             self.sysroot.clone(), self.lib_paths.clone())
     }
@@ -335,13 +334,16 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             let defs = RefCell::new(ast_map::collect_definitions(&krate));
             LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id)
                 .read_crates(&dep_graph);
-            let lcx = LoweringContext::new(&sess, Some(&krate), &defs);
-            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
+            let (analysis, resolutions, mut forest) = {
+                let mut defs = defs.borrow_mut();
+                driver::lower_and_resolve(&sess, &id, &mut defs,
+                    &krate, dep_graph, MakeGlobMap::No)
+            };
             let arenas = ty::CtxtArenas::new();
             let ast_map = ast_map::map_crate(&mut forest, &defs);
 
             driver::phase_3_run_analysis_passes(
-                &sess, ast_map, &arenas, id, MakeGlobMap::No,
+                &sess, ast_map, analysis, resolutions, &arenas, id,
                 |tcx, mir_map, analysis, _| {
                     tcx.sess.abort_if_errors();
 
@@ -375,7 +377,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
 /// the given closure with the borrowed type context and resulting `CrateAnalysis`.
 fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) -> Option<R>
         where F: Send + 'static, R: Send + 'static,
-        F: for<'tcx> FnOnce(&Crate, &ty::TyCtxt<'tcx>, ty::CrateAnalysis) -> R {
+        F: for<'a, 'gcx, 'tcx> FnOnce(&Crate, &ty::TyCtxt<'a, 'gcx, 'tcx>, ty::CrateAnalysis) -> R {
     monitor(move || {
         let opts = build_exec_options(sysroot, libs);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));
@@ -404,16 +406,19 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             let defs = RefCell::new(ast_map::collect_definitions(&krate));
             LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id)
                 .read_crates(&dep_graph);
-            let lcx = LoweringContext::new(&sess, Some(&krate), &defs);
-            let mut forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
+            let (analysis, resolutions, mut forest) = {
+                let mut defs = defs.borrow_mut();
+                driver::lower_and_resolve(&sess, &id, &mut defs,
+                    &krate, dep_graph, MakeGlobMap::No)
+            };
             let arenas = ty::CtxtArenas::new();
             let ast_map = ast_map::map_crate(&mut forest, &defs);
 
             driver::phase_3_run_analysis_passes(
-                &sess, ast_map, &arenas, id, MakeGlobMap::No,
+                &sess, ast_map, analysis, resolutions, &arenas, id,
                     |tcx, _mir_map, analysis, _| {
                         let _ignore = tcx.dep_graph.in_ignore();
-                        f(&krate, tcx, analysis)
+                        f(&krate, &tcx, analysis)
                     })
         })
     }).and_then(|r| r)
