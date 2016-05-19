@@ -307,9 +307,10 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         -> Option<(llvm::ModuleRef, Deps)> {
     let r = monitor(move || {
         let opts = build_exec_options(sysroot, libs);
-        let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
-            cstore.clone());
+        let dep_graph = DepGraph::new(opts.build_dep_graph());
+        let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+        let sess = build_session(opts, &dep_graph, None,
+            Registry::new(&rustc::DIAGNOSTICS), cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -328,13 +329,12 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
             let krate = try!(driver::phase_2_configure_and_expand(
                 &sess, &cstore, krate, id, None));
 
-            let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
             let krate = driver::assign_node_ids(&sess, krate);
             let mut defs = ast_map::collect_definitions(&krate);
             read_local_crates(&sess, &cstore, &defs, &krate, &id, &dep_graph);
             let (analysis, resolutions, mut forest) =
                 driver::lower_and_resolve(&sess, &id, &mut defs,
-                    &krate, dep_graph, MakeGlobMap::No);
+                    &krate, &dep_graph, MakeGlobMap::No);
             let arenas = ty::CtxtArenas::new();
             let ast_map = ast_map::map_crate(&mut forest, defs);
 
@@ -376,9 +376,10 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         F: for<'a, 'gcx, 'tcx> FnOnce(&Crate, &ty::TyCtxt<'a, 'gcx, 'tcx>, ty::CrateAnalysis) -> R {
     monitor(move || {
         let opts = build_exec_options(sysroot, libs);
-        let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
-            cstore.clone());
+        let dep_graph = DepGraph::new(opts.build_dep_graph());
+        let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+        let sess = build_session(opts, &dep_graph, None,
+            Registry::new(&rustc::DIAGNOSTICS), cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -397,13 +398,12 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             let krate = try!(driver::phase_2_configure_and_expand(
                 &sess, &cstore, krate, id, None));
 
-            let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
             let krate = driver::assign_node_ids(&sess, krate);
             let mut defs = ast_map::collect_definitions(&krate);
             read_local_crates(&sess, &cstore, &defs, &krate, &id, &dep_graph);
             let (analysis, resolutions, mut forest) =
                 driver::lower_and_resolve(&sess, &id, &mut defs,
-                    &krate, dep_graph, MakeGlobMap::No);
+                    &krate, &dep_graph, MakeGlobMap::No);
             let arenas = ty::CtxtArenas::new();
             let ast_map = ast_map::map_crate(&mut forest, defs);
 
