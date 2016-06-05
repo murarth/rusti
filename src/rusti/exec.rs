@@ -30,7 +30,6 @@ use rustc::session::build_session;
 use rustc::session::config::{self, basic_options, build_configuration,
     ErrorOutputType, Input, Options, OptLevel};
 use rustc_driver::driver;
-use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 
@@ -326,17 +325,12 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         };
 
         check_compile(|| {
-            let krate = try!(driver::phase_2_configure_and_expand(
-                &sess, &cstore, krate, id, None));
+            let driver::ExpansionResult{defs, analysis, resolutions, mut hir_forest, ..} =
+                try!(driver::phase_2_configure_and_expand(
+                    &sess, &cstore, krate, id, None, MakeGlobMap::No));
 
-            let krate = driver::assign_node_ids(&sess, krate);
-            let mut defs = ast_map::collect_definitions(&krate);
-            read_local_crates(&sess, &cstore, &defs, &krate, &id, &dep_graph);
-            let (analysis, resolutions, mut forest) =
-                driver::lower_and_resolve(&sess, &id, &mut defs,
-                    &krate, &dep_graph, MakeGlobMap::No);
             let arenas = ty::CtxtArenas::new();
-            let ast_map = ast_map::map_crate(&mut forest, defs);
+            let ast_map = ast_map::map_crate(&mut hir_forest, defs);
 
             driver::phase_3_run_analysis_passes(
                 &sess, ast_map, analysis, resolutions, &arenas, id,
@@ -395,17 +389,13 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
         };
 
         check_compile(|| {
-            let krate = try!(driver::phase_2_configure_and_expand(
-                &sess, &cstore, krate, id, None));
+            let driver::ExpansionResult{defs, analysis, resolutions, mut hir_forest,
+                    expanded_crate: krate} =
+                try!(driver::phase_2_configure_and_expand(
+                    &sess, &cstore, krate, id, None, MakeGlobMap::No));
 
-            let krate = driver::assign_node_ids(&sess, krate);
-            let mut defs = ast_map::collect_definitions(&krate);
-            read_local_crates(&sess, &cstore, &defs, &krate, &id, &dep_graph);
-            let (analysis, resolutions, mut forest) =
-                driver::lower_and_resolve(&sess, &id, &mut defs,
-                    &krate, &dep_graph, MakeGlobMap::No);
             let arenas = ty::CtxtArenas::new();
-            let ast_map = ast_map::map_crate(&mut forest, defs);
+            let ast_map = ast_map::map_crate(&mut hir_forest, defs);
 
             driver::phase_3_run_analysis_passes(
                 &sess, ast_map, analysis, resolutions, &arenas, id,
