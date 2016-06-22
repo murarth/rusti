@@ -315,7 +315,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
     // Items are not returned in data structures; nor are they converted back
     // into strings. Instead, to preserve user input formatting, we use
     // byte offsets to return the input as it was received.
-    fn slice(s: &String, lo: BytePos, hi: BytePos) -> String {
+    fn slice(s: &str, lo: BytePos, hi: BytePos) -> String {
         s[lo.0 as usize .. hi.0 as usize].to_owned()
     }
 
@@ -334,7 +334,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
         let sess = ParseSess::with_span_handler(handler, cm);
 
         let mut p = filemap_to_parser(&sess,
-            sess.codemap().new_filemap(filename, code.to_owned()),
+            sess.codemap().new_filemap(filename, None, code.clone()),
             Vec::new());
 
         // Whether the last statement is an expression without a semicolon
