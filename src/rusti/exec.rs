@@ -37,7 +37,7 @@ use syntax::ast::Crate;
 use syntax::codemap::MultiSpan;
 use syntax::errors;
 use syntax::errors::emitter::{Emitter, BasicEmitter};
-use syntax::diagnostics::registry::Registry;
+use syntax::errors::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
 
