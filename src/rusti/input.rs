@@ -19,10 +19,11 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread::Builder;
 
-use syntax::ast::{DeclKind, ItemKind, MacStmtStyle, StmtKind};
+use syntax::ast::{ItemKind, MacStmtStyle, StmtKind};
 use syntax::codemap::{BytePos, CodeMap, MultiSpan};
 use syntax::errors::{ColorConfig, DiagnosticBuilder, Handler, Level};
 use syntax::errors::emitter::{Emitter, EmitterWriter};
+use syntax::errors::snippet::FormatMode;
 use syntax::errors::Level::*;
 use syntax::parse::{classify, token};
 use syntax::parse::{filemap_to_parser, ParseSess};
@@ -372,45 +373,42 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             let mut hi = None;
 
             last_expr = match stmt.node {
-                StmtKind::Expr(ref e, _) => {
+                StmtKind::Expr(ref e) => {
                     if classify::expr_requires_semi_to_be_stmt(&**e) {
                         try_parse!(p.commit_stmt(&[], &[token::Semi, token::Eof]));
                     }
                     !p.eat(&token::Semi)
                 }
-                StmtKind::Mac(_, MacStmtStyle::NoBraces, _) => {
+                StmtKind::Mac(ref mac) if mac.1 == MacStmtStyle::NoBraces => {
                     try_parse!(p.expect_one_of(&[], &[token::Semi, token::Eof]));
                     !p.eat(&token::Semi)
                 }
-                StmtKind::Mac(_, _, _) => false,
-                StmtKind::Decl(ref decl, _) => {
-                    if let DeclKind::Local(_) = decl.node {
-                        try_parse!(p.expect(&token::Semi));
-                    } else {
-                        // Consume the semicolon if there is one,
-                        // but don't add it to the item
-                        hi = Some(p.last_span.hi);
-                        p.eat(&token::Semi);
-                    }
+                StmtKind::Mac(_) => false,
+                StmtKind::Local(_) => {
+                    try_parse!(p.expect(&token::Semi));
+                    false
+                }
+                StmtKind::Item(_) => {
+                    // Consume the semicolon if there is one,
+                    // but don't add it to the item
+                    hi = Some(p.last_span.hi);
+                    p.eat(&token::Semi);
                     false
                 }
                 _ => false
             };
 
             let dest = match stmt.node {
-                StmtKind::Decl(ref decl, _) => {
-                    match decl.node {
-                        DeclKind::Local(..) => &mut input.statements,
-                        DeclKind::Item(ref item) => {
-                            match item.node {
-                                ItemKind::ExternCrate(..) | ItemKind::Use(..) =>
-                                    &mut input.view_items,
-                                _ => &mut input.items,
-                            }
-                        }
+                StmtKind::Local(..) => &mut input.statements,
+                StmtKind::Item(ref item) => {
+                    match item.node {
+                        ItemKind::ExternCrate(..) | ItemKind::Use(..) =>
+                            &mut input.view_items,
+                        _ => &mut input.items,
                     }
                 },
-                StmtKind::Mac(_, MacStmtStyle::Braces, _) => &mut input.items,
+                StmtKind::Mac(ref mac) if mac.1 == MacStmtStyle::Braces =>
+                    &mut input.items,
                 _ => &mut input.statements,
             };
 
@@ -447,7 +445,8 @@ impl ErrorEmitter {
     fn new(cm: Rc<CodeMap>, err: Arc<Mutex<ErrorState>>, filter: bool) -> ErrorEmitter {
         ErrorEmitter{
             error: err,
-            emitter: EmitterWriter::stderr(ColorConfig::Auto, None, cm),
+            emitter: EmitterWriter::stderr(ColorConfig::Auto, None, cm,
+                FormatMode::NewErrorFormat),
             filter: filter,
         }
     }
