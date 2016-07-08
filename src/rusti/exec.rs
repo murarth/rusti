@@ -327,7 +327,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
         check_compile(|| {
             let driver::ExpansionResult{defs, analysis, resolutions, mut hir_forest, ..} =
                 try!(driver::phase_2_configure_and_expand(
-                    &sess, &cstore, krate, id, None, MakeGlobMap::No));
+                    &sess, &cstore, krate, id, None, MakeGlobMap::No, |_| Ok(())));
 
             let arenas = ty::CtxtArenas::new();
             let ast_map = ast_map::map_crate(&mut hir_forest, defs);
@@ -392,7 +392,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
             let driver::ExpansionResult{defs, analysis, resolutions, mut hir_forest,
                     expanded_crate: krate} =
                 try!(driver::phase_2_configure_and_expand(
-                    &sess, &cstore, krate, id, None, MakeGlobMap::No));
+                    &sess, &cstore, krate, id, None, MakeGlobMap::No, |_| Ok(())));
 
             let arenas = ty::CtxtArenas::new();
             let ast_map = ast_map::map_crate(&mut hir_forest, defs);
