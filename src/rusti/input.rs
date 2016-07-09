@@ -375,7 +375,7 @@ pub fn parse_program(code: &str, filter: bool, filename: Option<&str>) -> InputR
             last_expr = match stmt.node {
                 StmtKind::Expr(ref e) => {
                     if classify::expr_requires_semi_to_be_stmt(&**e) {
-                        try_parse!(p.commit_stmt(&[], &[token::Semi, token::Eof]));
+                        try_parse!(p.expect_one_of(&[], &[token::Semi, token::Eof]));
                     }
                     !p.eat(&token::Semi)
                 }
