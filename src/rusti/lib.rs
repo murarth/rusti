@@ -48,7 +48,8 @@ pub fn run() -> i32 {
     opts.optopt("c", "", "Execute a rusti command and exit", "COMMAND");
     opts.optopt("e", "", "Execute a one-line program and exit", "PROGRAM");
     opts.optflag("h", "help", "Print this help message and exit");
-    opts.optflag("i", "interactive", "Run rusti interactively even with a file");
+    opts.optflag("i", "interactive", "Run rusti interactively, \
+        even when `-c`, `-e`, or a filename is present");
     opts.optflag("v", "version", "Print version and exit");
     opts.optmulti("L", "", "Add a directory to the library search path", "PATH");
     opts.optflag("", "no-rc", "Do not run $HOME/.rustirc.rs");
