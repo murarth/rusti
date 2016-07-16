@@ -39,7 +39,6 @@ use syntax::errors;
 use syntax::errors::emitter::{Emitter, BasicEmitter};
 use syntax::errors::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::parse::token;
 
 /// Compiles input code into an execution environment.
 pub struct ExecutionEngine {
@@ -307,7 +306,7 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
     let r = monitor(move || {
         let opts = build_exec_options(sysroot, libs);
         let dep_graph = DepGraph::new(opts.build_dep_graph());
-        let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+        let cstore = Rc::new(CStore::new(&dep_graph));
         let sess = build_session(opts, &dep_graph, None,
             Registry::new(&rustc::DIAGNOSTICS), cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -371,7 +370,7 @@ fn with_analysis<F, R>(f: F, input: Input, sysroot: PathBuf, libs: Vec<String>) 
     monitor(move || {
         let opts = build_exec_options(sysroot, libs);
         let dep_graph = DepGraph::new(opts.build_dep_graph());
-        let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+        let cstore = Rc::new(CStore::new(&dep_graph));
         let sess = build_session(opts, &dep_graph, None,
             Registry::new(&rustc::DIAGNOSTICS), cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
