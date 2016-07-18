@@ -36,7 +36,8 @@ use rustc_resolve::MakeGlobMap;
 use syntax::ast::Crate;
 use syntax::codemap::MultiSpan;
 use syntax::errors;
-use syntax::errors::emitter::{Emitter, BasicEmitter};
+use syntax::errors::emitter::EmitterWriter;
+use syntax::errors::snippet::FormatMode;
 use syntax::errors::registry::Registry;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -435,12 +436,15 @@ fn monitor<F, R>(f: F) -> Option<R>
 fn handle_compiler_panic(e: Box<Any + Send + 'static>, data: Arc<Mutex<Vec<u8>>>) {
     if !e.is::<errors::FatalError>() {
         if !e.is::<errors::ExplicitBug>() {
-            let mut emitter = BasicEmitter::stderr(errors::ColorConfig::Auto);
+            let emitter = EmitterWriter::stderr(errors::ColorConfig::Auto,
+                None, None, FormatMode::NewErrorFormat);
 
-            emitter.emit(
+            let handler = errors::Handler::with_emitter(
+                true, false, Box::new(emitter));
+
+            handler.emit(
                 &MultiSpan::new(),
                 "unexpected panic",
-                None,
                 errors::Level::Bug);
         }
 

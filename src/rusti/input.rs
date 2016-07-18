@@ -20,8 +20,8 @@ use std::sync::mpsc::channel;
 use std::thread::Builder;
 
 use syntax::ast::{ItemKind, MacStmtStyle, StmtKind};
-use syntax::codemap::{BytePos, CodeMap, MultiSpan};
-use syntax::errors::{ColorConfig, DiagnosticBuilder, Handler, Level};
+use syntax::codemap::{BytePos, CodeMap};
+use syntax::errors::{ColorConfig, DiagnosticBuilder, Handler};
 use syntax::errors::emitter::{Emitter, EmitterWriter};
 use syntax::errors::snippet::FormatMode;
 use syntax::errors::Level::*;
@@ -445,7 +445,7 @@ impl ErrorEmitter {
     fn new(cm: Rc<CodeMap>, err: Arc<Mutex<ErrorState>>, filter: bool) -> ErrorEmitter {
         ErrorEmitter{
             error: err,
-            emitter: EmitterWriter::stderr(ColorConfig::Auto, None, cm,
+            emitter: EmitterWriter::stderr(ColorConfig::Auto, None, Some(cm),
                 FormatMode::NewErrorFormat),
             filter: filter,
         }
@@ -457,32 +457,9 @@ impl ErrorEmitter {
 }
 
 impl Emitter for ErrorEmitter {
-    fn emit(&mut self, span: &MultiSpan, msg: &str,
-            code: Option<&str>, lvl: Level) {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
         if !self.filter {
-            self.emitter.emit(span, msg, code, lvl);
-            self.set_error(ErrorState::Fatal);
-            return;
-        }
-
-        match lvl {
-            Bug | Fatal | Error => {
-                if is_non_fatal(msg) {
-                    self.set_error(ErrorState::NonFatal);
-                } else {
-                    self.emitter.emit(span, msg, code, lvl);
-                    self.set_error(ErrorState::Fatal);
-                    // Send any "help" messages that may follow
-                    self.filter = false;
-                }
-            }
-            _ => ()
-        }
-    }
-
-    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
-        if !self.filter {
-            self.emitter.emit_struct(db);
+            self.emitter.emit(db);
             self.set_error(ErrorState::Fatal);
             return;
         }
@@ -492,7 +469,7 @@ impl Emitter for ErrorEmitter {
                 if is_non_fatal(db.message()) {
                     self.set_error(ErrorState::NonFatal);
                 } else {
-                    self.emitter.emit_struct(db);
+                    self.emitter.emit(db);
                     self.set_error(ErrorState::Fatal);
                     // Send any "help" messages that may follow
                     self.filter = false;
