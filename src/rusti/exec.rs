@@ -32,6 +32,7 @@ use rustc::session::config::{self, basic_options, build_configuration,
 use rustc_driver::driver;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
+use rustc_trans::ModuleSource;
 
 use syntax::ast::Crate;
 use syntax::codemap::MultiSpan;
@@ -350,7 +351,10 @@ fn compile_input(input: Input, sysroot: PathBuf, libs: Vec<String>)
                         .filter_map(|(_, p)| p).collect();
 
                     assert_eq!(trans.modules.len(), 1);
-                    let llmod = trans.modules[0].llmod;
+                    let llmod = match trans.modules[0].source {
+                        ModuleSource::Translated(ref ll) => ll.llmod,
+                        _ => panic!("translation contains no LLVM module")
+                    };
 
                     // Workaround because raw pointers do not impl Send
                     let modp = llmod as usize;
