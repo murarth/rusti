@@ -22,38 +22,35 @@ sudo yum install readline-devel
 
 ## Building
 
-Rusti builds with the latest Rust nightly, using the Cargo build system.  
-Currently, it **must** be built using a nightly release of the Rust compiler.
+Rusti builds with Rust nightly, using the Cargo build system.  
+Currently, it **must** be built using a nightly release of the Rust compiler
+released **no later than 2016-08-01**.
 
-Nightly releases can be found at the bottom of the
-[Rust install page](http://www.rust-lang.org/install.html)
-or installed using the `--channel=nightly` option to
-[rustup](https://github.com/rust-lang/rustup).
+The recommended method of installation is to use the following command to
+[rustup](https://github.com/rust-lang-nursery/rustup.rs):
 
-For users of stable or beta, [multirust](https://github.com/brson/multirust)
-can be used to maintain multiple concurrent Rust installs.
+    rustup install nightly-2016-08-01
 
 ### Installation using Cargo
 
 Rusti can be installed directly using Cargo. The following command will
-download, build, and compile Rusti, placing it in `~/.cargo/bin/` or your
+download, compile, and install Rusti, placing it in `~/.cargo/bin/` or your
 operating system equivalent.
 
     cargo install --git https://github.com/murarth/rusti
 
-If you are using `multirust`, that command will look like this:
+If you are using `rustup`, that command will look like this:
 
-    # update to the latest nightly version
-    multirust update nightly
-    multirust run nightly cargo install --git https://github.com/murarth/rusti
-
+    rustup run nightly-2016-08-01 \
+      cargo install --git https://github.com/murarth/rusti
 
 ### Building from a Git clone
 
-If using [multirust](https://github.com/brson/multirust), the following command
-will create an override to use the nightly branch within the `rusti` source tree:
+If using [rustup](https://github.com/rust-lang-nursery/rustup.rs),
+the following command will create an override to use the correct nightly build
+within the `rusti` source tree:
 
-    multirust override nightly
+    rustup override nightly-2016-08-01
 
 Build with Cargo:
 
