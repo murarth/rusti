@@ -50,7 +50,7 @@ If using [rustup](https://github.com/rust-lang-nursery/rustup.rs),
 the following command will create an override to use the correct nightly build
 within the `rusti` source tree:
 
-    rustup override nightly-2016-08-01
+    rustup override add nightly-2016-08-01
 
 Build with Cargo:
 
