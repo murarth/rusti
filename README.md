@@ -4,22 +4,6 @@ A REPL for the Rust programming language.
 
 Rusti is a work in progress.
 
-## Dependencies
-
-Rusti requires GNU Readline.
-
-### Ubuntu / Debian
-
-```
-sudo apt-get install libreadline-dev
-```
-
-### Fedora / CentOS
-
-```
-sudo yum install readline-devel
-```
-
 ## Building
 
 Rusti builds with Rust nightly, using the Cargo build system.  
