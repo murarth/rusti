@@ -11,7 +11,7 @@
 use std::borrow::Cow;
 use std::borrow::Cow::*;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, stdin, BufRead, BufReader};
 use std::mem::swap;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -28,7 +28,10 @@ use syntax::errors::Level::*;
 use syntax::parse::{classify, token};
 use syntax::parse::{filemap_to_parser, ParseSess};
 
-use readline;
+use linefeed::Reader;
+use linefeed::terminal::DefaultTerminal;
+
+use completion::Completer;
 use repl::{lookup_command, CmdArgs};
 
 use self::InputResult::*;
@@ -93,15 +96,25 @@ impl FileReader {
 /// Reads input from `stdin`
 pub struct InputReader {
     buffer: String,
-    is_tty: bool,
+    reader: Option<Reader<DefaultTerminal>>,
 }
 
 impl InputReader {
     /// Constructs a new `InputReader` reading from `stdin`.
     pub fn new() -> InputReader {
+        let r = match Reader::new("rusti") {
+            Ok(mut r) => {
+                r.set_completer(Rc::new(Completer));
+                r.set_completion_append_character(None);
+                r.set_word_break_chars(" \t\n!\"#$%&'()*+,-./:;<=>?@[\\]^`");
+                Some(r)
+            }
+            Err(_) => None
+        };
+
         InputReader{
             buffer: String::new(),
-            is_tty: stdin_tty(),
+            reader: r,
         }
     }
 
@@ -135,6 +148,11 @@ impl InputReader {
         };
 
         res
+    }
+
+    /// Returns whether the `InputReader` is reading from a TTY.
+    pub fn is_tty(&self) -> bool {
+        self.reader.is_some()
     }
 
     /// Reads a block of input until receiving a line consisting only of `.`,
@@ -171,22 +189,27 @@ impl InputReader {
     }
 
     fn read_line(&mut self, prompt: &str) -> Option<String> {
-        if self.is_tty {
-            readline::read_line(prompt)
-        } else {
-            let mut s = String::new();
-            match io::stdin().read_line(&mut s) {
-                Ok(0) => return None,
-                Ok(_) => (),
-                Err(_) => return None
+        match self.reader {
+            Some(ref mut r) => {
+                r.set_prompt(prompt);
+                r.read_line().ok().and_then(|line| line)
             }
-            Some(s)
+            None => self.read_stdin()
         }
     }
 
-    fn add_history(&self, line: &str) {
-        if self.is_tty {
-            readline::push_history(line);
+    fn read_stdin(&self) -> Option<String> {
+        let mut s = String::new();
+
+        match stdin().read_line(&mut s) {
+            Ok(0) | Err(_) => None,
+            Ok(_) => Some(s)
+        }
+    }
+
+    fn add_history(&mut self, line: &str) {
+        if let Some(ref mut r) = self.reader {
+            r.add_history(line.to_owned());
         }
     }
 }
@@ -488,21 +511,6 @@ fn is_non_fatal(msg: &str) -> bool {
         msg.contains("unterminated double quote string") ||
         msg.contains("unterminated double quote byte string") ||
         msg.contains("unterminated raw string")
-}
-
-#[cfg(not(windows))]
-pub fn stdin_tty() -> bool {
-    use libc::{isatty, STDIN_FILENO};
-    unsafe { isatty(STDIN_FILENO) == 1 }
-}
-
-#[cfg(windows)]
-pub fn stdin_tty() -> bool {
-    // FIXME: `STDIN_FILENO` is not available in libc on Windows.
-    // The proper way to test for this is `isatty(fileno(stdin))`, but
-    // C stdin filehandle cannot be accessed from Rust.
-    use libc::isatty;
-    unsafe { isatty(0) == 1 }
 }
 
 #[cfg(test)]

@@ -12,7 +12,7 @@
 #![feature(rustc_private, set_stdio)]
 
 extern crate getopts;
-extern crate libc;
+extern crate linefeed;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_lint;
@@ -35,7 +35,6 @@ use std::path::PathBuf;
 pub mod completion;
 pub mod exec;
 pub mod input;
-pub mod readline;
 pub mod repl;
 
 /// Run `rusti` executable using `env::args`.

@@ -8,26 +8,44 @@
 
 //! Provides text completion for user input.
 
-use std::fs::read_dir;
-use std::io::{self, Write};
-use std::path::is_separator;
+use std::io::Write;
+use std::iter::repeat;
 use std::process::Command;
+
+use linefeed::{self, Completion, Reader, Terminal};
+use linefeed::complete::complete_path;
 
 use tempfile::NamedTempFile;
 
 use input::is_command;
 use repl::{lookup_command, search_command, CmdArgs};
 
+pub struct Completer;
+
+impl<Term: Terminal> linefeed::Completer<Term> for Completer {
+    fn complete(&self, _word: &str, reader: &Reader<Term>,
+            start: usize, end: usize) -> Option<Vec<Completion>> {
+        let is_whitespace = reader.buffer()[..start]
+            .chars().all(|ch| ch.is_whitespace());
+
+        if is_whitespace && start == end {
+            // Indent when there's no word to complete
+            let n = 4 - start % 4;
+
+            Some(vec![Completion::simple(repeat(' ').take(n).collect())])
+        } else {
+            complete(reader.buffer(), end)
+        }
+    }
+}
+
 /// Returns a series of possible completions for the given input.
 /// Input text may be a word or the entire line buffer.
 /// `end` indicates the position of the cursor.
 /// This typically one past the end of the word, in bytes.
 ///
-/// Results are returned as the (possibly empty) common prefix of all matches
-/// and the series of suffixes to the existing portion of the word.
-///
 /// If no matches are found, returns `None`.
-pub fn complete(text: &str, end: usize) -> Option<(String, Vec<String>)> {
+pub fn complete(text: &str, end: usize) -> Option<Vec<Completion>> {
     debug!("completion input: text={:?} end={:?}", text, end);
 
     // Don't attempt to complete when the input is empty
@@ -35,7 +53,7 @@ pub fn complete(text: &str, end: usize) -> Option<(String, Vec<String>)> {
         return None;
     }
 
-    let completions = if is_command(text) {
+    if is_command(text) {
         let line = &text[0..end];
 
         // If there's a space before the end of input,
@@ -54,17 +72,19 @@ pub fn complete(text: &str, end: usize) -> Option<(String, Vec<String>)> {
 
             match accepts {
                 CmdArgs::Expr => args.and_then(|arg| complete_code(arg, arg.len())),
-                CmdArgs::Filename => complete_filename(args.unwrap_or("")),
+                CmdArgs::Filename => Some(complete_path(args.unwrap_or(""))),
                 _ => None
             }
         } else {
             // Complete command name
             let mut names = Vec::new();
 
-            let prefix_len = line.len() - 1;
-
             search_command(&line[1..],
-                |cmd| names.push(cmd.name[prefix_len..].to_owned()));
+                |cmd| names.push(Completion{
+                    completion: cmd.name.to_owned(),
+                    display: None,
+                    suffix: Some(' '),
+                }));
 
             if names.is_empty() {
                 None
@@ -74,19 +94,11 @@ pub fn complete(text: &str, end: usize) -> Option<(String, Vec<String>)> {
         }
     } else {
         complete_code(text, end)
-    };
-
-    completions.and_then(|c| {
-        if c.is_empty() {
-            None
-        } else {
-            Some((common_prefix(&c), c))
-        }
-    })
+    }
 }
 
 /// Performs completion for Rust code.
-fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
+fn complete_code(text: &str, end: usize) -> Option<Vec<Completion>> {
     let mut file = NamedTempFile::new().unwrap();
     file.write_all(text.as_bytes()).unwrap();
     file.write_all(b"\n").unwrap();
@@ -103,39 +115,8 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
     let mut lines = res_string.lines();
     let mut completions = vec![];
 
-    // read the prefix length from the first line of output.
-    // used to remove the prefix from the completions.
-    let prefix_len = {
-        let prefix_line = match lines.next() {
-            Some(l) => l,
-            None => {
-                warn!("invalid line of racer output: {:?}", res_string);
-                return None;
-            },
-        };
-
-        let prefix_parts: Vec<_> = prefix_line.splitn(2, ' ').collect();
-        if prefix_parts.len() != 2 || prefix_parts[0] != "PREFIX" {
-            warn!("invalid PREFIX line: {:?}", res_string);
-            return None;
-        }
-
-        let args: Vec<_> = prefix_parts[1].splitn(3, ',').collect();
-        if args.len() != 3 {
-            warn!("invalid PREFIX value: {:?}", prefix_line);
-            return None;
-        }
-
-        let (start, end) = match (args[0].parse::<usize>(), args[1].parse::<usize>()) {
-            (Ok(start), Ok(end)) if start <= end => (start, end),
-            _ => {
-                warn!("invalid PREFIX values: {:?}", prefix_line);
-                return None;
-            }
-        };
-
-        end - start
-    };
+    // Skip the "PREFIX" line from racer output
+    lines.next();
 
     for line in lines {
         let (restype, rest) = {
@@ -151,13 +132,14 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
                 let mut fields = rest.split(',');
 
                 let mut name = match fields.next() {
-                    // Remove item's prefix
-                    Some(name) => name[prefix_len..].to_owned(),
+                    Some(name) => name.to_owned(),
                     None => {
                         warn!("missing name in MATCH value: {:?}", rest);
                         return None;
                     }
                 };
+
+                let mut display = None;
 
                 let mtype = match fields.nth(3) {
                     Some(ty) => ty,
@@ -167,14 +149,23 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
                     }
                 };
 
-                match mtype {
-                    "Crate" | "Module" => name.push_str("::"),
-                    "Function" => name.push('('),
-                    _ => ()
+                let suffix = match mtype {
+                    "Crate" | "Module" => Some("::"),
+                    "Function" => Some("("),
+                    _ => None
+                };
+
+                if let Some(suffix) = suffix {
+                    display = Some(name.clone());
+                    name.push_str(suffix);
                 }
 
                 debug!("completion: {:?}", name);
-                completions.push(name);
+                completions.push(Completion{
+                    completion: name,
+                    display: display,
+                    suffix: None,
+                });
             }
             "END" => break,
             _ => warn!("unexpected racer command: {:?}", line)
@@ -186,72 +177,4 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<String>> {
     } else {
         Some(completions)
     }
-}
-
-/// Returns a set of possible filename completions.
-fn complete_filename(name: &str) -> Option<Vec<String>> {
-    if name.is_empty() {
-        list_dir("./", "").ok()
-    } else {
-        let (path, prefix) = match name.rfind(|c| is_separator(c)) {
-            Some(pos) => (&name[..pos + 1], &name[pos + 1..]),
-            None => ("./", name)
-        };
-
-        list_dir(path, prefix).ok()
-    }
-}
-
-/// Returns a series of completion suffixes for files in the given directory
-/// and beginning with the given prefix.
-fn list_dir(path: &str, prefix: &str) -> io::Result<Vec<String>> {
-    let mut names = Vec::new();
-    let path_len = path.len();
-    let prefix_len = prefix.len();
-
-    for ent in try!(read_dir(path)) {
-        let ent = try!(ent);
-        let path = ent.path();
-        let name = match path.to_str() {
-            Some(name) => &name[path_len..],
-            None => continue,
-        };
-
-        if !name.starts_with(prefix) {
-            continue;
-        }
-
-        let mut name = name[prefix_len..].to_owned();
-
-        let ty = try!(ent.file_type());
-
-        if ty.is_dir() {
-            name.push('/');
-        }
-
-        names.push(name);
-    }
-
-    debug!("list_dir({:?}, {:?}) -> {:?}", path, prefix, names);
-    Ok(names)
-}
-
-/// Returns the (possibly empty) common prefix of the given strings.
-/// Input strings must be non-empty.
-fn common_prefix(strs: &[String]) -> String {
-    assert!(!strs.is_empty());
-
-    let mut prefix: String = strs[0].clone();
-
-    for c in strs[1..].iter() {
-        while !c.starts_with(&prefix) {
-            prefix.pop();
-        }
-
-        if prefix.is_empty() {
-            break;
-        }
-    }
-
-    prefix
 }

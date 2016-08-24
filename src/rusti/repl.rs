@@ -20,7 +20,7 @@ use syntax::ast::StmtKind;
 use syntax::visit::{self, FnKind};
 
 use exec::ExecutionEngine;
-use input::{parse_command, parse_program, stdin_tty};
+use input::{parse_command, parse_program};
 use input::{FileReader, Input, InputReader};
 use input::InputResult::{Command, Program, Empty, More, Eof, InputError};
 
@@ -171,7 +171,7 @@ impl Repl {
                 Empty => (),
                 More => { more = true; },
                 Eof => {
-                    if stdin_tty() {
+                    if input.is_tty() {
                         println!("");
                     }
                     break;
