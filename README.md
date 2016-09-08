@@ -28,6 +28,10 @@ If you are using `rustup`, that command will look like this:
     rustup run nightly-2016-08-01 \
       cargo install --git https://github.com/murarth/rusti
 
+Then you can run it like this:
+
+    rustup run nightly-2016-08-01 ~/.cargo/bin/rusti
+
 ### Building from a Git clone
 
 If using [rustup](https://github.com/rust-lang-nursery/rustup.rs),
