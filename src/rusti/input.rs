@@ -28,7 +28,7 @@ use syntax::errors::Level::*;
 use syntax::parse::{classify, token};
 use syntax::parse::{filemap_to_parser, ParseSess};
 
-use linefeed::Reader;
+use linefeed::{Reader, ReadResult};
 use linefeed::terminal::DefaultTerminal;
 
 use completion::Completer;
@@ -123,8 +123,12 @@ impl InputReader {
     /// In this case, the input received so far is buffered internally.
     pub fn read_input(&mut self, prompt: &str) -> InputResult {
         let line = match self.read_line(prompt) {
-            Some(s) => s,
-            None => return Eof,
+            ReadResult::Eof => return Eof,
+            ReadResult::Input(s) => s,
+            ReadResult::Signal(_) => {
+                self.buffer.clear();
+                return Empty;
+            }
         };
 
         self.buffer.push_str(&line);
@@ -169,8 +173,12 @@ impl InputReader {
 
         loop {
             let line = match self.read_line(prompt) {
-                Some(s) => s,
-                None => return Eof,
+                ReadResult::Eof => return Eof,
+                ReadResult::Input(s) => s,
+                ReadResult::Signal(_) => {
+                    self.buffer.clear();
+                    return Empty;
+                }
             };
 
             if !line.is_empty() {
@@ -178,6 +186,7 @@ impl InputReader {
             }
 
             if line == ".q" || line == ":q" {
+                self.buffer.clear();
                 return Empty;
             } else if line == "." {
                 return parse_program(&buf, true, None);
@@ -188,22 +197,23 @@ impl InputReader {
         }
     }
 
-    fn read_line(&mut self, prompt: &str) -> Option<String> {
+    fn read_line(&mut self, prompt: &str) -> ReadResult {
         match self.reader {
             Some(ref mut r) => {
                 r.set_prompt(prompt);
-                r.read_line().ok().and_then(|line| line)
+
+                r.read_line().ok().unwrap_or(ReadResult::Eof)
             }
             None => self.read_stdin()
         }
     }
 
-    fn read_stdin(&self) -> Option<String> {
+    fn read_stdin(&self) -> ReadResult {
         let mut s = String::new();
 
         match stdin().read_line(&mut s) {
-            Ok(0) | Err(_) => None,
-            Ok(_) => Some(s)
+            Ok(0) | Err(_) => ReadResult::Eof,
+            Ok(_) => ReadResult::Input(s)
         }
     }
 

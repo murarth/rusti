@@ -12,7 +12,7 @@ use std::io::Write;
 use std::iter::repeat;
 use std::process::Command;
 
-use linefeed::{self, Completion, Reader, Terminal};
+use linefeed::{self, Completion, Reader, Suffix, Terminal};
 use linefeed::complete::complete_path;
 
 use tempfile::NamedTempFile;
@@ -83,7 +83,7 @@ pub fn complete(text: &str, end: usize) -> Option<Vec<Completion>> {
                 |cmd| names.push(Completion{
                     completion: cmd.name.to_owned(),
                     display: None,
-                    suffix: Some(' '),
+                    suffix: Suffix::Some(' '),
                 }));
 
             if names.is_empty() {
@@ -164,7 +164,7 @@ fn complete_code(text: &str, end: usize) -> Option<Vec<Completion>> {
                 completions.push(Completion{
                     completion: name,
                     display: display,
-                    suffix: None,
+                    suffix: Suffix::None,
                 });
             }
             "END" => break,

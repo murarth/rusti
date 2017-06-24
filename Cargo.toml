@@ -18,7 +18,7 @@ test = false
 [dependencies]
 env_logger = "0.3"
 getopts = "0.2"
-linefeed = "0.1"
+linefeed = "0.2"
 log = "0.3"
 tempfile = "1.1"
 
