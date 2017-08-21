@@ -19,14 +19,10 @@ The recommended method of installation is to use the following command to
 
 Rusti can be installed directly using Cargo. The following command will
 download, compile, and install Rusti, placing it in `~/.cargo/bin/` or your
-operating system equivalent.
+operating system equivalent, assuming you haved installed `nightly-2016-08-01`
+using `rustup`:
 
-    cargo install --git https://github.com/murarth/rusti
-
-If you are using `rustup`, that command will look like this:
-
-    rustup run nightly-2016-08-01 \
-      cargo install --git https://github.com/murarth/rusti
+    rustup run nightly-2016-08-01 cargo install --git https://github.com/murarth/rusti
 
 Then you can run it like this:
 
