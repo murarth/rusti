@@ -4,6 +4,10 @@ A REPL for the Rust programming language.
 
 Rusti is a work in progress.
 
+## Dependencies
+
+On Unix systems, Rusti requires `libncursesw` (`libncurses` on Mac OS).
+
 ## Building
 
 Rusti builds with Rust nightly, using the Cargo build system.  
