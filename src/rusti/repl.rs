@@ -62,6 +62,9 @@ static COMMANDS: &'static [CommandDef] = &[
     CommandDef{name: "block", args: None,
         accepts: CmdArgs::Nothing,
         help: "Run a multi-line block of code, terminated by `.`"},
+    CommandDef{name: "exit", args: None,
+        accepts: CmdArgs::Nothing,
+        help: "Exit the REPL"},
     CommandDef{name: "help", args: Some("[command]"),
         accepts: CmdArgs::Text,
         help: "Show help for commands"},
@@ -91,6 +94,8 @@ pub struct Repl {
     items: Vec<String>,
     /// true if the next input should be a block
     read_block: bool,
+    /// true if the main REPL loop should terminate
+    exit_repl: bool,
 }
 
 /// Looks up a command name by what may be an abbreviated prefix.
@@ -132,6 +137,7 @@ impl Repl {
             view_items: Vec::new(),
             items: Vec::new(),
             read_block: false,
+            exit_repl: false,
         }
     }
 
@@ -147,7 +153,7 @@ impl Repl {
         let mut more = false;
         let mut input = InputReader::new();
 
-        loop {
+        while !self.exit_repl {
             let res = if self.read_block {
                 self.read_block = false;
                 input.read_block_input(BLOCK_PROMPT)
@@ -288,6 +294,9 @@ r#"#![allow(dead_code, unused_imports, unused_features)]
             Some("block") => {
                 self.read_block = true;
             },
+            Some("exit") => {
+                self.exit_repl = true;
+            }
             Some("help") => {
                 self.help_command(args.as_ref().map(|s| &s[..]));
             }
