@@ -2,7 +2,7 @@
 
 A REPL for the Rust programming language.
 
-Rusti is a work in progress.
+**The rusti project is deprecated. It is not recommended for regular use.**
 
 ## Dependencies
 
